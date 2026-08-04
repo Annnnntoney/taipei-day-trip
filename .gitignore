@@ -139,3 +139,6 @@ cython_debug/
 
 # macOS
 .DS_Store
+
+# Ｐersonal Notes
+SETUP_NOTES.md

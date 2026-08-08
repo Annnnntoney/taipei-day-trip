@@ -1,9 +1,9 @@
 from fastapi import *
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+import contextlib
 import os
 import mysql.connector
 from dotenv import load_dotenv
-from fastapi.responses import FileResponse, JSONResponse
 
 
 app=FastAPI()
@@ -27,105 +27,106 @@ async def thankyou(request: Request):
 	return FileResponse("./static/thankyou.html", media_type="text/html")
 
 # ---------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------
+PAGE_SIZE = 8
+
+
+@contextlib.contextmanager
+def dict_cursor():
+    """Open a MySQL connection, yield a dict cursor, always close both."""
+    conn = mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        charset="utf8mb4",
+    )
+    cursor = conn.cursor(dictionary=True)
+    try:
+        yield cursor
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def fetch_images_for_ids(cursor, ids):
+    """Fetch every image of the given attractions in one query, grouped by id."""
+    if not ids:
+        return {}
+    placeholders = ", ".join(["%s"] * len(ids))
+    cursor.execute(
+        "SELECT attraction_id, url FROM attraction_images "
+        f"WHERE attraction_id IN ({placeholders})",
+        ids,
+    )
+    img_map = {}
+    for row in cursor.fetchall():
+        img_map.setdefault(row["attraction_id"], []).append(row["url"])
+    return img_map
+
+
+def normalize_attraction(row, images):
+    """Shape a DB row into the response format: images array, lat/lng as numbers."""
+    row["images"] = images
+    row["lat"] = float(row["lat"])      # DECIMAL is not JSON serializable
+    row["lng"] = float(row["lng"])
+    return row
+
+
+# ---------------------------------------------------
 # Attraction APIs (Part 1-2)
 # ---------------------------------------------------
 @app.get("/api/categories")
 def get_categories():
-    conn = mysql.connector.connect(
-		host=os.getenv("DB_HOST"),
-		user=os.getenv("DB_USER"),
-		password=os.getenv("DB_PASSWORD"),
-		database=os.getenv("DB_NAME"),
-  		charset="utf8mb4"
-	)
-    # print("Connect Successful")
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT DISTINCT category FROM attractions")
-    rows = cursor.fetchall()
-    # print(rows)
-    cursor.close()
-    conn.close()
-    
-    return {"data":[row["category"] for row in rows]}
+    with dict_cursor() as cursor:
+        cursor.execute("SELECT DISTINCT category FROM attractions")
+        rows = cursor.fetchall()
+
+    return {"data": [row["category"] for row in rows]}
+
 
 @app.get("/api/mrts")
 def get_mrts():
-    conn = mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        charset="utf8mb4"
-    )
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT mrt FROM attractions "
-                   "WHERE mrt IS NOT NULL "
-                   "GROUP BY mrt "
-                   "ORDER BY COUNT(*) DESC"
-    )
-    rows = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    with dict_cursor() as cursor:
+        cursor.execute(
+            "SELECT mrt FROM attractions "
+            "WHERE mrt IS NOT NULL "
+            "GROUP BY mrt "
+            "ORDER BY COUNT(*) DESC"
+        )
+        rows = cursor.fetchall()
 
-    return {"data":[row["mrt"] for row in rows]}
+    return {"data": [row["mrt"] for row in rows]}
 
 
 @app.get("/api/attraction/{id}")
 def get_attraction(id: int):
-    conn = mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        charset="utf8mb4"
-    )
-    cursor = conn.cursor(dictionary=True)
+    with dict_cursor() as cursor:
+        # 1. 查景點本體
+        cursor.execute("SELECT * FROM attractions WHERE id = %s", (id,))
+        attraction = cursor.fetchone()
 
-    # 1. 查景點本體
-    cursor.execute("SELECT * FROM attractions WHERE id = %s", (id,))
-    attraction = cursor.fetchone()
+        # 2. 查不到就回 400（依 API 規格書，此端點的錯誤碼是 400 而非 404）
+        if attraction is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": True, "message": "景點編號不正確"},
+            )
 
-    # 2. 查不到就回 400
-    if attraction is None:
-        cursor.close()
-        conn.close()
-        return JSONResponse(
-            status_code=400,
-            content={"error": True, "message": "景點編號不正確"}
-        )
+        # 3. 查圖片
+        images = fetch_images_for_ids(cursor, [id]).get(id, [])
 
-    # 3. 查圖片，組成陣列
-    cursor.execute(
-        "SELECT url FROM attraction_images WHERE attraction_id = %s", (id,)
-    )
-    attraction["images"] = [row["url"] for row in cursor.fetchall()]
-
-    # 4. Decimal 轉 float
-    attraction["lat"] = float(attraction["lat"])
-    attraction["lng"] = float(attraction["lng"])
-
-    cursor.close()
-    conn.close()
-
-    return {"data": attraction}
+    return {"data": normalize_attraction(attraction, images)}
 
 
 @app.get("/api/attractions")
 def get_attractions(page: int = 0, keyword: str = None, category: str = None):
-    conn = mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        charset="utf8mb4"
-    )
-    cursor = conn.cursor(dictionary=True)
-
-    # 1. 有哪些條件就收集哪些
+    # 1. 有哪些條件就收集哪些（子句全是硬編碼常數，使用者輸入一律走 params）
     conditions, params = [], []
 
     if keyword:
-        conditions.append("(mrt = %s OR name LIKE %s)")
+        conditions.append("(mrt = %s OR name LIKE %s)")   # 站名完全比對／景點名模糊比對
         params.append(keyword)
         params.append(f"%{keyword}%")
 
@@ -135,38 +136,24 @@ def get_attractions(page: int = 0, keyword: str = None, category: str = None):
 
     where = "WHERE " + " AND ".join(conditions) if conditions else ""
 
-    # 2. 多取一筆，判斷還有沒有下一頁
-    sql = f"SELECT * FROM attractions {where} ORDER BY id LIMIT %s OFFSET %s"
-    cursor.execute(sql, params + [9, page * 8])
-    rows = cursor.fetchall()
-
-    if len(rows) > 8:
-        next_page = page + 1
-        rows = rows[:8]
-    else:
-        next_page = None
-
-    # 3. 一次撈完這 8 個景點的所有圖片
-    ids = [r["id"] for r in rows]
-    img_map = {}
-
-    if ids:
-        placeholders = ", ".join(["%s"] * len(ids))
+    with dict_cursor() as cursor:
+        # 2. 多取一筆，判斷還有沒有下一頁
         cursor.execute(
-            f"SELECT attraction_id, url FROM attraction_images "
-            f"WHERE attraction_id IN ({placeholders})",
-            ids
+            f"SELECT * FROM attractions {where} ORDER BY id LIMIT %s OFFSET %s",
+            params + [PAGE_SIZE + 1, page * PAGE_SIZE],
         )
-        for row in cursor.fetchall():
-            img_map.setdefault(row["attraction_id"], []).append(row["url"])
+        rows = cursor.fetchall()
+
+        if len(rows) > PAGE_SIZE:
+            next_page = page + 1
+            rows = rows[:PAGE_SIZE]
+        else:
+            next_page = None
+
+        # 3. 一次撈完這頁所有景點的圖片
+        img_map = fetch_images_for_ids(cursor, [r["id"] for r in rows])
 
     # 4. 組裝
-    for r in rows:
-        r["images"] = img_map.get(r["id"], [])
-        r["lat"] = float(r["lat"])
-        r["lng"] = float(r["lng"])
+    data = [normalize_attraction(r, img_map.get(r["id"], [])) for r in rows]
 
-    cursor.close()
-    conn.close()
-
-    return {"nextPage": next_page, "data": rows}
+    return {"nextPage": next_page, "data": data}

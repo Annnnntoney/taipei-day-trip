@@ -55,11 +55,11 @@ def fetch_images_for_ids(cursor, ids):
     if not ids:
         return {}
     placeholders = ", ".join(["%s"] * len(ids))
-    cursor.execute(
+    sql = (
         "SELECT attraction_id, url FROM attraction_images "
-        f"WHERE attraction_id IN ({placeholders})",
-        ids,
-    )
+        "WHERE attraction_id IN (" + placeholders + ")"
+    )   # placeholders 只由 "%s" 重複組成，與使用者輸入無關
+    cursor.execute(sql, ids)
     img_map = {}
     for row in cursor.fetchall():
         img_map.setdefault(row["attraction_id"], []).append(row["url"])
@@ -122,25 +122,17 @@ def get_attraction(id: int):
 
 @app.get("/api/attractions")
 def get_attractions(page: int = 0, keyword: str = None, category: str = None):
-    # 1. 有哪些條件就收集哪些（子句全是硬編碼常數，使用者輸入一律走 params）
-    conditions, params = [], []
-
-    if keyword:
-        conditions.append("(mrt = %s OR name LIKE %s)")   # 站名完全比對／景點名模糊比對
-        params.append(keyword)
-        params.append(f"%{keyword}%")
-
-    if category:
-        conditions.append("category = %s")
-        params.append(category)
-
-    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    # 1. 條件參數化：參數為 NULL 時該組條件恆真＝不做篩選，SQL 本身是純靜態字串
+    like = f"%{keyword}%" if keyword else None
 
     with dict_cursor() as cursor:
         # 2. 多取一筆，判斷還有沒有下一頁
         cursor.execute(
-            f"SELECT * FROM attractions {where} ORDER BY id LIMIT %s OFFSET %s",
-            params + [PAGE_SIZE + 1, page * PAGE_SIZE],
+            "SELECT * FROM attractions "
+            "WHERE (%s IS NULL OR mrt = %s OR name LIKE %s) "   # 站名完全比對／景點名模糊比對
+            "  AND (%s IS NULL OR category = %s) "
+            "ORDER BY id LIMIT %s OFFSET %s",
+            (keyword, keyword, like, category, category, PAGE_SIZE + 1, page * PAGE_SIZE),
         )
         rows = cursor.fetchall()
 

@@ -1,5 +1,6 @@
 # Import tools
 import os
+import sys
 import mysql.connector
 import json #Python 內建，用來讀 JSON 檔
 import re #內建正規表達式工具，拆圖片網址用
@@ -9,41 +10,18 @@ load_dotenv()
 # Load the JSON file
 with open("data/taipei-attractions.json", encoding="utf-8-sig") as f:
     data=json.load(f)
-# Test the result
-#print(len(data["list"]))
 
 # Get the two key values
 img_host = data["img_host"]
 attractions = data["list"]
 
-# To see the first data
-a = attractions[0]
-
-# Print the nine columns of the first attraction
-print("id :", a["_id"])
-print("name :", a["name"])
-print("category :", a["CAT"])
-print("description:", a["description"][:30])
-print("address  :", a["address"])
-print("transport:", a["direction"][:30])
-print("mrt      :", a["MRT"])
-print("lat      :", a["latitude"])
-print("lng      :", a["longitude"])
-
-# Split the glued image paths of the first attraction
-urls = re.findall(r'/imgs/[^/]+?\.jpg', a["imgurls"])
-print("找到", len(urls), "張")
-print(urls)
-
-# Count images across all 58 attractions (expect 281)
-total = 0
-for a in attractions:
-    total += len(re.findall(r'/imgs/[^/]+?\.jpg', a["imgurls"]))
-print("總圖片數:", total)
-
-# Prepend the host to build full image URLs
-images = [img_host + u for u in urls]
-print(images)
+# Guard: this script wipes the attractions table before re-importing.
+# Ask for confirmation unless run with --force (e.g. python3 import_data.py --force)
+if "--force" not in sys.argv:
+    answer = input(f"即將清空並重新匯入 {os.getenv('DB_NAME')} 的景點資料，繼續？(yes/no) ")
+    if answer.strip().lower() != "yes":
+        print("已取消，資料庫未變動")
+        sys.exit(0)
 
 # Connect to DB
 conn = mysql.connector.connect(
@@ -61,6 +39,7 @@ print("Connect Succeed")
 cursor.execute("DELETE FROM attractions")
 
 # Insert attractions, then their images
+image_count = 0
 for item in attractions:
     # 1. 先插景點
     cursor.execute(
@@ -86,12 +65,13 @@ for item in attractions:
         "INSERT INTO attraction_images (attraction_id, url) VALUES (%s, %s)",
         rows
     )
+    image_count += len(rows)
 
 # Commit and close
 conn.commit()
 cursor.close()
 conn.close()
-print("匯入完成")
+print(f"匯入完成：{len(attractions)} 筆景點、{image_count} 張圖片")
 
 
 # 驗收用的指令（在終端機執行，不是 Python）

@@ -54,12 +54,14 @@ def fetch_images_for_ids(cursor, ids):
     """Fetch every image of the given attractions in one query, grouped by id."""
     if not ids:
         return {}
-    placeholders = ", ".join(["%s"] * len(ids))
-    sql = (
+    # SQL 為純靜態字串：固定 PAGE_SIZE 個佔位符，不足的用 None 補滿
+    # （IN 清單裡的 NULL 永遠不會比對到任何列，無副作用）
+    padded = list(ids) + [None] * (PAGE_SIZE - len(ids))
+    cursor.execute(
         "SELECT attraction_id, url FROM attraction_images "
-        "WHERE attraction_id IN (" + placeholders + ")"
-    )   # placeholders 只由 "%s" 重複組成，與使用者輸入無關
-    cursor.execute(sql, ids)
+        "WHERE attraction_id IN (%s, %s, %s, %s, %s, %s, %s, %s)",
+        padded,
+    )
     img_map = {}
     for row in cursor.fetchall():
         img_map.setdefault(row["attraction_id"], []).append(row["url"])

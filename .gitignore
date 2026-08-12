@@ -140,5 +140,6 @@ cython_debug/
 # macOS
 .DS_Store
 
-# Ｐersonal Notes
-SETUP_NOTES.md
+# Personal Notes
+personal-notes/
+reference/

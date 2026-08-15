@@ -143,3 +143,5 @@ cython_debug/
 # Personal Notes
 personal-notes/
 reference/
+# Claude Code
+.claude/

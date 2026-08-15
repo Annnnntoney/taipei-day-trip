@@ -53,9 +53,11 @@ async function loadNextPage() {
     renderAttractions(result.data);
     nextPage = result.nextPage;  // 存回全域變數，供下一次載入使用
 
-    // 第一頁就沒有資料 → 提示查無結果
+    // 三種狀態：查無結果 / 已載完全部 / 還有下一頁（不顯示提示）
     if (listEl.children.length === 0) {
       showStatus("找不到符合條件的景點");
+    } else if (nextPage === null) {
+      showStatus("已顯示全部景點");
     } else {
       hideStatus();
     }

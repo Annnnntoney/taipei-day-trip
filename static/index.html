@@ -1,11 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Index</title>
+  <title>台北一日遊</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  
+
+  <!-- ============ 導覽列 ============ -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="/">台北一日遊</a>
+      <nav class="nav__menu">
+        <a class="nav__link" href="/booking">預定行程</a>
+        <a class="nav__link" href="#">登入/註冊</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ 主視覺 + 搜尋 ============ -->
+  <section class="hero">
+    <div class="hero__content">
+      <h1 class="hero__title">輕鬆享受台北一日悠閒</h1>
+      <p class="hero__subtitle">探索每個角落，體驗城市的深度旅遊行程</p>
+
+      <div class="search">
+        <!-- 分類按鈕 + 彈出面板（面板定位靠 .search__category 的 position:relative） -->
+        <div class="search__category">
+          <button type="button" class="search__category-btn" id="category-btn">
+            <span id="category-label">全部分類</span>
+            <span class="search__caret">▼</span>
+          </button>
+          <!-- 分類選項由 JS 依 /api/categories 產生 -->
+          <div class="category-menu" id="category-menu" hidden></div>
+        </div>
+
+        <input type="text" class="search__input" id="search-input" placeholder="輸入景點名稱查詢">
+
+        <button type="button" class="search__btn" id="search-btn" aria-label="搜尋">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"
+                  d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.5 16.5 21 21"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 捷運站橫向列表 ============ -->
+  <section class="mrt">
+    <div class="mrt__inner">
+      <button type="button" class="mrt__arrow mrt__arrow--left" id="mrt-left" aria-label="向左捲動">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round" d="M15 5 8 12l7 7"/>
+        </svg>
+      </button>
+
+      <!-- 捷運站名由 JS 依 /api/mrts 產生 -->
+      <ul class="mrt__list" id="mrt-list"></ul>
+
+      <button type="button" class="mrt__arrow mrt__arrow--right" id="mrt-right" aria-label="向右捲動">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round" d="m9 5 7 7-7 7"/>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ 景點列表 ============ -->
+  <main class="attractions">
+    <div class="attractions__inner">
+      <!-- 卡片由 JS 依 /api/attractions 產生 -->
+      <div class="attractions__grid" id="attraction-list"></div>
+
+      <!-- 提示訊息（載入中／沒有結果／已到底） -->
+      <p class="attractions__status" id="status" hidden></p>
+
+      <!-- 無限捲動的哨兵：進入畫面就載入下一頁 -->
+      <div id="sentinel" aria-hidden="true"></div>
+    </div>
+  </main>
+
+  <!-- ============ 頁尾 ============ -->
+  <footer class="footer">
+    COPYRIGHT © 2021 台北一日遊
+  </footer>
+
+  <script src="/static/index.js"></script>
 </body>
 </html>

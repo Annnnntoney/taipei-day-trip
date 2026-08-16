@@ -1,5 +1,6 @@
 from fastapi import *
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 import contextlib
 import os
 import mysql.connector
@@ -25,6 +26,13 @@ async def booking(request: Request):
 @app.get("/thankyou", include_in_schema=False)
 async def thankyou(request: Request):
 	return FileResponse("./static/thankyou.html", media_type="text/html")
+
+# ---------------------------------------------------
+# Static assets (CSS / JS / images)
+# 掛載後 static/style.css 自動對應到 /static/style.css，新增檔案不用改程式
+# ---------------------------------------------------
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # ---------------------------------------------------
 # Shared helpers

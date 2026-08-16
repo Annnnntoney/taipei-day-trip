@@ -1,0 +1,447 @@
+/* ============================================================
+   Taipei Day Trip — 首頁樣式
+   色票與尺寸皆取自 Figma 設計稿（fileKey: SKpxra47VVXUYKvGatvS2H）
+   ============================================================ */
+
+/* ---------- 設計變數（對應 Figma 的 Style Guide） ---------- */
+:root {
+  --color-primary:   #448899;   /* Primary Color / Cyan 70：logo、搜尋鈕 */
+  --color-text:      #000000;   /* Additional Color / Black：主要文字 */
+  --color-text-sub:  #757575;   /* Secondary Color / Gray 50：次要文字、placeholder、頁尾底色 */
+  --color-gray-70:   #666666;   /* Secondary Color / Gray 70：nav 連結、捷運站列文字 */
+  --color-line:      #E8E8E8;   /* Secondary Color / Gray 20 */
+  --color-bg-light:  #EEEEEE;   /* Secondary Color / Gray 10 */
+  --color-white:     #FFFFFF;
+  --shadow-box:      0 0 20px #AABBCC;
+  --shadow-text:     0 0 30px #AABBCC;
+
+  /* 版面尺寸（Figma 量測值） */
+  --container:       1200px;    /* 桌機內容容器寬 */
+  --nav-height:      54px;
+  --hero-height:     320px;
+  --footer-height:   104px;
+}
+
+/* ---------- 基礎重置 ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "Noto Sans TC", "PingFang TC", sans-serif;
+  color: var(--color-text);
+  background: var(--color-white);
+}
+
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+/* 共用容器：桌機置中 1200px，兩側留白 */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+/* ============================================================
+   導覽列  Figma: navigation 1920 × 54
+   ============================================================ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--nav-height);
+  background: var(--color-white);
+  box-shadow: var(--shadow-box);
+}
+
+.nav__inner {
+  height: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Figma: 文字框 150 × 34 → 5 字 × 30px，行高 34 */
+.nav__logo {
+  font-size: 30px;          /* Header 2 - Bold 30(34) */
+  line-height: 34px;
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;      /* 窄螢幕也不斷行 */
+}
+
+.nav__menu { display: flex; }
+
+/* Figma: 「預定行程」84 × 34、「登入/註冊」91 × 34 → 16px + 左右 padding */
+.nav__link {
+  padding: 0 10px;
+  line-height: 34px;
+  font-size: 16px;          /* Body - Med 16 */
+  font-weight: 500;
+  color: var(--color-gray-70);   /* Figma: Gray 70 #666666 */
+  white-space: nowrap;      /* 窄螢幕也不斷行 */
+}
+
+.nav__link:hover { color: var(--color-primary); }
+
+/* ============================================================
+   主視覺  Figma: hero section 1920 × 320
+   ============================================================ */
+.hero {
+  height: var(--hero-height);
+  /* 桌機主視覺（Figma 匯出 1920 × 320）*/
+  background-image: url("/static/images/welcome.png");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+}
+
+.hero__content {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Figma: 文字框 41 高（桌機／手機相同）*/
+.hero__title {
+  font-size: 28px;          /* Header 1 - Bold 28(24)，括號是行高不是手機字級 */
+  font-weight: 700;
+  line-height: 41px;
+  color: var(--color-white);
+  text-shadow: var(--shadow-text);
+}
+
+/* Figma: 文字框 22 高，與主標間距 15（78 - 41 - 22 = 15）*/
+.hero__subtitle {
+  margin-top: 15px;
+  font-size: 16px;          /* Body - Bold 16(13.3) */
+  font-weight: 700;
+  line-height: 22px;
+  color: var(--color-white);
+  text-shadow: var(--shadow-text);
+}
+
+/* ---------- 搜尋列  Figma: search bar 460 × 46 ---------- */
+.search {
+  margin-top: 25px;
+  display: flex;
+  align-items: stretch;
+  width: 460px;
+  max-width: 100%;
+  height: 46px;
+  border-radius: 5px;
+  overflow: visible;        /* 讓分類面板可以溢出顯示 */
+  box-shadow: var(--shadow-box);
+}
+
+.search__category { position: relative; }   /* 分類面板定位的基準 */
+
+.search__category-btn {
+  height: 46px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-white);
+  border-radius: 5px 0 0 5px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.search__caret { font-size: 12px; }
+
+.search__input {
+  flex: 1;
+  min-width: 0;             /* 讓 flex 子元素可以縮小，避免溢出 */
+  padding: 0 12px;
+  border: none;
+  outline: none;
+  background: var(--color-white);
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.search__input::placeholder { color: var(--color-text-sub); }   /* Figma: Gray 50 */
+
+.search__btn {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  border-radius: 0 5px 5px 0;
+}
+
+.search__btn:hover { filter: brightness(1.1); }
+
+/* ---------- 分類彈出面板  Figma: category menu 300 × 160 ---------- */
+.category-menu {
+  position: absolute;
+  top: calc(100% + 5px);    /* search bar 下方 5px（Figma: y=154 = 103+46+5） */
+  left: 0;
+  z-index: 50;
+  width: 300px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);   /* Figma 是 3 欄格狀 */
+  gap: 8px 4px;
+  background: var(--color-white);
+  border-radius: 5px;
+  box-shadow: var(--shadow-box);
+}
+
+.category-menu[hidden] { display: none; }   /* 覆蓋 display:grid，讓 hidden 生效 */
+
+.category-menu__item {
+  padding: 8px 4px;
+  font-size: 14px;          /* Category List - Med 14(auto) */
+  font-weight: 500;
+  color: var(--color-text);          /* Figma: 純黑 */
+  text-align: center;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.category-menu__item:hover { background: var(--color-bg-light); }
+
+.category-menu__item--active { color: var(--color-primary); font-weight: 700; }
+
+/* ============================================================
+   捷運站橫向列表  Figma: list bar 1200 × 70
+   ============================================================ */
+.mrt {
+  height: 70px;
+  background: var(--color-white);
+  box-shadow: var(--shadow-box);
+}
+
+.mrt__inner {
+  height: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* Figma: 左右容器各 47px（左箭頭 x=15、右箭頭 x=0，皆 32 × 32）
+   → 圓形本身就是元素，靠 margin 補足 47 的間距，不用偽元素 */
+.mrt__arrow {
+  flex-shrink: 0;           /* 箭頭不被壓縮 */
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;  /* 圖示置中於圓形 */
+  border-radius: 50%;
+  background: var(--color-white);
+  box-shadow: var(--shadow-box);
+}
+
+.mrt__arrow--left  { margin-left: 15px; }    /* 15 + 32 = Figma 的 47 */
+.mrt__arrow--right { margin-right: 15px; }   /* 32 + 15 = Figma 的 47 */
+
+.mrt__arrow:hover { background: var(--color-bg-light); }
+
+.mrt__list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  padding: 0 10px;          /* Figma: listItem container 距容器左緣 10px */
+  /* Figma 的 listItem 之間沒有 gap，間距來自每項自身的左右 padding */
+  overflow-x: auto;
+  scroll-behavior: smooth;  /* 讓箭頭捲動有動畫 */
+  scrollbar-width: none;            /* Firefox 隱藏捲軸 */
+  -ms-overflow-style: none;         /* IE 隱藏捲軸 */
+}
+
+.mrt__list::-webkit-scrollbar { display: none; }   /* Chrome / Safari 隱藏捲軸 */
+
+/* Figma: 兩字站名 62px、三字 78px、四字 94px → 每字 16px + 左右各 15px padding */
+.mrt__item {
+  flex-shrink: 0;           /* 🔴 關鍵：不讓站名被擠壓成一團 */
+  padding: 0 15px;
+  line-height: 24px;
+  font-size: 16px;          /* Body - Med 16 */
+  font-weight: 500;
+  color: var(--color-gray-70);   /* Figma: Gray 70 #666666，不是黑色 */
+  white-space: nowrap;
+}
+
+.mrt__item:hover { color: var(--color-primary); }
+
+/* ============================================================
+   景點列表  Figma: 卡片 270 × 242，間距 30，4 欄
+   ============================================================ */
+.attractions {
+  min-height: 400px;        /* 避免資料還沒載入時頁尾跳上來 */
+  padding: 25px 0 40px;
+}
+
+.attractions__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+.attractions__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);   /* 桌機 4 欄；有幾張排幾張 */
+  gap: 30px;
+}
+
+.attractions__status {
+  padding: 30px 0;
+  text-align: center;
+  font-size: 16px;
+  color: var(--color-text-sub);
+}
+
+.attractions__status[hidden] { display: none; }
+
+/* ---------- 單張卡片 ---------- */
+.card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: var(--shadow-box);
+  background: var(--color-white);
+}
+
+.card__figure {
+  position: relative;       /* 名稱色帶定位的基準 */
+  height: 197px;            /* 242 總高 - 45 資訊列 */
+}
+
+.card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;        /* 🔴 等比裁切填滿，圖片不會被拉伸變形 */
+  display: block;
+  background: var(--color-bg-light);   /* 圖片載入前的底色 */
+}
+
+/* Figma: details 色帶 y=157 高 40；文字 x=10 y=10 高 20 */
+.card__name {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--color-white);
+  font-size: 16px;          /* Body - Bold 16 */
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;  /* 名稱太長時顯示「…」而不是撐破版面 */
+}
+
+/* Figma: details 高 45，內容 x=10 y=10 高 25，左右各 125px（等分） */
+.card__meta {
+  height: 45px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  font-size: 16px;          /* Body - Med 16 */
+  font-weight: 500;
+  color: var(--color-text-sub);   /* Figma: Gray 50 */
+  border-top: 1px solid var(--color-line);   /* Figma: Gray 20 分隔線 */
+}
+
+/* 左右各佔一半（Figma 是 125 + 125 = 250），不是 space-between —— */
+/* 這樣站名或分類過長時只會在自己那半邊截斷，不會把另一邊擠掉 */
+.card__mrt,
+.card__category {
+  flex: 1 1 50%;
+  min-width: 0;
+  line-height: 25px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card__category { text-align: right; }
+
+/* ---------- 無限捲動哨兵 ---------- */
+#sentinel { height: 1px; }
+
+/* ============================================================
+   頁尾  Figma: footer 1920 × 104
+   ============================================================ */
+.footer {
+  height: var(--footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-text-sub);
+  color: var(--color-white);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   RWD 斷點
+   Figma 只提供 1920（桌機）與 360（手機）兩種設計
+   中間尺寸依比例遞減欄數
+   ============================================================ */
+
+/* 平板：3 欄
+   斷點設 1280 而非 1200 —— 容器本身就是 1200，若斷點也設 1200，
+   4 欄版面只有在 1201px 以上才看得到，等於幾乎沒有喘息空間。
+   1280 = 1200 容器 + 左右各 40 留白，是容器能舒適呈現的最小視窗寬。 */
+@media (max-width: 1280px) {
+  .attractions__grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* 小平板：2 欄 */
+@media (max-width: 900px) {
+  .attractions__grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+}
+
+/* 手機：1 欄  Figma: [Mobile] index (w:360)，容器 340、卡片 330 */
+@media (max-width: 600px) {
+  .nav__inner,
+  .mrt__inner,
+  .attractions__inner,
+  .hero__content { padding: 0 10px; }
+
+  /* ⚠️ 手機版「不縮字級」——
+     Figma 的 [Mobile] index 用的是同一組文字樣式（Header 1 - Bold 28、Body 16），
+     文字框高度也同為 41 / 22。樣式名稱括號裡的數字是「行高」不是手機字級。 */
+
+  .search { width: 100%; }          /* Figma 手機版 search bar 320 = 340 容器滿版 */
+
+  /* 面板維持 Figma 的 300px；極窄螢幕才縮，避免超出畫面 */
+  .category-menu {
+    width: 300px;
+    max-width: calc(100vw - 30px);
+  }
+
+  .attractions__grid { grid-template-columns: 1fr; gap: 15px; }
+
+  /* nav 同樣不縮：Figma [Mobile] navigation 的 logo 仍是 150 × 34（30px）*/
+
+  /* 🔴 手機版主視覺是「另一張圖」（Figma 匯出 360 × 320，城市天際線）
+     沿用桌機那張 1920 寬的圖會被 cover 裁到只剩天空，看起來完全不同 */
+  .hero { background-image: url("/static/images/welcome-mobile.png"); }
+}
+
+/* ⚠️ Figma 最窄的設計稿是 360px。低於此寬度（例如 iPhone SE 一代的 320）
+   nav 的 logo 150 + 連結 175 + padding 20 = 345px 會塞不下而換行，
+   所以只在「設計稿範圍之外」才縮字級——360 以上仍完全忠於 Figma。 */
+@media (max-width: 359px) {
+  .nav__logo { font-size: 24px; }
+  .nav__link { font-size: 14px; padding: 0 6px; }
+}

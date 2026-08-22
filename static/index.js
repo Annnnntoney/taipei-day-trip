@@ -87,8 +87,10 @@ function isSentinelVisible() {
  */
 function renderAttractions(attractions) {
   for (const item of attractions) {
-    const card = document.createElement("div");
+    // 用 <a> 而不是 div + onclick：中鍵開新分頁、右鍵複製連結、SEO 都是免費的
+    const card = document.createElement("a");
     card.className = "card";
+    card.href = `/attraction/${item.id}`;
 
     // --- 圖片區（含名稱色帶）---
     const figure = document.createElement("div");

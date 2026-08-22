@@ -1,0 +1,190 @@
+/* ============================================================
+   Taipei Day Trip — 景點頁專屬樣式
+   尺寸皆取自 Figma [Desktop] attractions (3:313) / [Mobile] (3:270)
+   style.css 必須先載入（共用變數在那）
+   ============================================================ */
+
+/* 這 4 個變數只有本頁用得到，不放進 style.css 的 :root */
+:root {
+  --attr-gap:      40px;   /* 區塊垂直間距，桌機／手機相同 */
+  --attr-col-gap:  30px;   /* 桌機兩欄間距 */
+  --arrow-size:    36px;   /* 輪播箭頭 */
+  --indicator-h:    5px;   /* 指示條高度 */
+}
+
+/* 全頁文字實測都是 Gray 70，在最外層指定一次 */
+.detail { color: var(--color-gray-70); }
+
+/* ---------- 上半部兩欄  Figma: section 1200×400，左 540 右 600 間距 30 ---------- */
+.detail__top {
+  max-width: var(--container);
+  margin: var(--attr-gap) auto 0;
+  padding: 0 15px;                      /* Figma: section 內縮 15 */
+  display: grid;
+  grid-template-columns: 540fr 600fr;   /* = 9fr 10fr，用 fr 中間尺寸才不會爆版 */
+  gap: var(--attr-col-gap);
+}
+
+/* ---------- 左欄：輪播 ---------- */
+.slideshow {
+  position: relative;       /* 箭頭與指示條的定位基準 */
+  border-radius: 5px;
+  overflow: hidden;         /* 讓指示條也吃到圓角 */
+}
+
+.slideshow__viewport {
+  overflow: hidden;         /* 把「還沒輪到」的圖片藏在框外 */
+  aspect-ratio: 27 / 20;    /* Figma 540 × 400 */
+}
+
+.slideshow__track {
+  display: flex;            /* 所有圖片橫向排成一長條 */
+  height: 100%;
+  transition: transform 0.4s ease;
+}
+
+.slideshow__slide { flex: 0 0 100%; height: 100%; }
+
+.slideshow__slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;        /* Figma 的圖是裁切不是拉伸 */
+  display: block;
+}
+
+.slideshow__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);   /* Figma y=(H-36)/2 → 垂直置中 */
+  width: var(--arrow-size);      /* Figma 36 × 36 */
+  height: var(--arrow-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 2;
+}
+.slideshow__arrow--left  { left: 10px; }    /* Figma 左右各內縮 10 */
+.slideshow__arrow--right { right: 10px; }
+.slideshow__arrow:hover  { background: var(--color-white); }
+
+/* 指示條：滿版貼底、N 等分、段間無 gap（Figma: indicator bar 540×5） */
+.slideshow__dots {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--indicator-h);
+  display: flex;            /* 段數由 images.length 決定，不寫死 */
+  z-index: 2;
+}
+.slideshow__dot {
+  flex: 1;                  /* 自動等分：幾張圖就切幾段 */
+  padding: 0;
+  background: rgba(255, 255, 255, 0.6);
+}
+.slideshow__dot--active { background: rgba(0, 0, 0, 0.8); }
+
+/* ---------- 右欄：景點資訊 + 預訂表單 ---------- */
+.profile__name {
+  font-size: 24px;          /* Header 3 - Bold 24（不是首頁的 28） */
+  font-weight: 700;
+  line-height: 33px;
+}
+
+.profile__sub { margin-top: 15px; font-size: 16px; line-height: 22px; }
+
+.booking {
+  margin-top: 20px;
+  padding: 15px 20px 40px;              /* Figma 上15 左右20 下41 */
+  border-radius: 5px;
+  background: var(--color-line);        /* 實測 #E8E8E8 = Gray 20 */
+}
+
+.booking__title { font-weight: 700; line-height: 22px; }
+.booking__note  { margin-top: 15px; line-height: 24px; }
+
+.booking__row {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;                 /* Figma: 標籤 81 → 控制項 x=86 */
+  min-height: 22px;
+}
+
+/* 本頁四個標籤剛好都是 5 個字（5×16≈81），才能統一固定寬讓控制項對齊 */
+.booking__label { flex: 0 0 81px; }
+
+.booking__date {
+  width: 193px;                         /* Figma 193 × 35 */
+  height: 35px;
+  padding: 0 10px;
+  border: none;                         /* 實測無框線、無圓角（跟面板不同） */
+  border-radius: 0;
+  background: var(--color-white);
+  font-family: inherit;
+  font-size: 19px;                      /* Button - Reg 19 */
+  color: var(--color-text);             /* 全頁唯一的純黑 */
+}
+
+.booking__radio { display: flex; align-items: center; gap: 4px; }
+
+/* 一定要 appearance:none，否則原生 radio 由瀏覽器畫，background 無效 */
+.booking__radio input {
+  appearance: none;
+  margin: 0;
+  width: 22px;                          /* Figma 22 × 22 */
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-white);       /* 未選＝純白圓，實測無外框線 */
+  cursor: pointer;
+}
+.booking__radio input:checked { background: var(--color-primary); }
+
+.booking__submit {
+  margin-top: 25px;
+  width: 154px;                         /* Figma 154 × 36 */
+  height: 36px;
+  border-radius: 5px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 19px;                      /* Button - Reg 19 */
+}
+.booking__submit:hover { filter: brightness(1.1); }
+
+/* ---------- 下半部：描述、地址、交通 ---------- */
+.detail__bottom {
+  max-width: var(--container);
+  margin: var(--attr-gap) auto 0;
+  padding: var(--attr-gap) 10px 40px;   /* 分隔線上下各 40（Figma 實測） */
+  border-top: 1px solid var(--color-line);
+}
+
+.detail__desc {
+  white-space: pre-wrap;    /* 保留 API 資料裡的換行 */
+  line-height: 24px;        /* 高度讓文字自己撐，不寫 height */
+}
+
+.detail__heading { margin-top: 20px; font-size: 16px; line-height: 32px; font-weight: 700; }
+.detail__text    { line-height: 24px; }   /* 緊接小標，間距 0 */
+
+/* ---------- RWD ---------- */
+/* 平板以下：兩欄疊成一欄 */
+@media (max-width: 900px) {
+  .detail__top { grid-template-columns: 1fr; gap: 20px; }
+}
+
+/* 手機  Figma: [Mobile] attractions (w:360) */
+@media (max-width: 600px) {
+  .detail__top {
+    margin-top: 0;                      /* 手機版圖片直接貼 nav，無 40 留白 */
+    padding: 0;                         /* 圖片要滿版 360 */
+    gap: 20px;                          /* 圖片 → profile 間距 20 */
+  }
+
+  .slideshow           { border-radius: 0; }        /* 滿版不留圓角 */
+  .slideshow__viewport { aspect-ratio: 36 / 35; }   /* Figma 360 × 350 */
+
+  .profile { padding: 0 10px; }         /* 圖片滿版，但文字回到 340 容器 */
+  .booking { padding-bottom: 15px; }
+  /* ⚠️ 不縮字級，只改版面（Figma 手機版用同一組文字樣式） */
+}

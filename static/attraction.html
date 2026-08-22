@@ -1,11 +1,106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attraction</title>
+  <title>台北一日遊</title>
+  <!-- 內嵌 SVG 圖示：避免瀏覽器自動請求 /favicon.ico 而得到 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23448899'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E台%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/attraction.css">
 </head>
 <body>
-  
+  <!-- =============導覽列================= -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="/">台北一日遊</a>
+      <nav class="nav__menu">
+        <a class="nav__link" href="/booking">預定行程</a>
+        <a class="nav__link" href="#">登入/註冊</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 步驟 3 的內容之後放這裡 -->
+    <main class="detail">
+
+    <!-- 上半部：左邊輪播、右邊資訊 -->
+    <div class="detail__top">
+
+      <!-- 左：圖片輪播 -->
+      <section class="slideshow">
+        <div class="slideshow__viewport">
+          <!-- 圖片由 JS 依 images 陣列產生 -->
+          <div class="slideshow__track" id="slide-track"></div>
+        </div>
+
+        <button type="button" class="slideshow__arrow slideshow__arrow--left" id="slide-prev" aria-label="上一張">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round"
+                  stroke-linejoin="round" d="M15 5 8 12l7 7"/>
+          </svg>
+        </button>
+
+        <button type="button" class="slideshow__arrow slideshow__arrow--right" id="slide-next" aria-label="下一張">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="none" stroke="#666" stroke-width="2.5" stroke-linecap="round"
+                  stroke-linejoin="round" d="m9 5 7 7-7 7"/>
+          </svg>
+        </button>
+
+        <!-- 指示點由 JS 依圖片數量產生 -->
+        <div class="slideshow__dots" id="slide-dots"></div>
+      </section>
+
+      <!-- 右：景點資訊 + 預訂表單 -->
+      <section class="profile">
+        <h1 class="profile__name" id="name">載入中…</h1>
+        <p class="profile__sub">
+          <span id="category"></span> at <span id="mrt"></span>
+        </p>
+
+        <form class="booking" id="booking-form">
+          <p class="booking__title">訂購導覽行程</p>
+          <p class="booking__note">以此景點為中心的一日行程，帶您探索城市角落故事</p>
+
+          <div class="booking__row">
+            <label class="booking__label" for="date">選擇日期：</label>
+            <input class="booking__date" type="date" id="date" name="date" required>
+          </div>
+
+          <div class="booking__row">
+            <span class="booking__label">選擇時間：</span>
+            <label class="booking__radio"><input type="radio" name="time" value="morning" checked> 上半天</label>
+            <label class="booking__radio"><input type="radio" name="time" value="afternoon"> 下半天</label>
+          </div>
+
+          <div class="booking__row">
+            <span class="booking__label">導覽費用：</span>
+            <span id="price">新台幣 2000 元</span>
+          </div>
+
+          <button type="submit" class="booking__submit">開始預約行程</button>
+        </form>
+      </section>
+
+    </div>
+
+    <!-- 下半部：描述、地址、交通 -->
+    <div class="detail__bottom">
+      <p class="detail__desc" id="description"></p>
+
+      <h2 class="detail__heading">景點地址：</h2>
+      <p class="detail__text" id="address"></p>
+
+      <h2 class="detail__heading">交通方式：</h2>
+      <p class="detail__text" id="transport"></p>
+    </div>
+
+  </main>
+  <!-- ============ 頁尾 ============ -->
+  <footer class="footer">
+    COPYRIGHT © 2021 台北一日遊
+  </footer>
+  <script src="/static/attraction.js"></script>
 </body>
 </html>

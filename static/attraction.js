@@ -37,8 +37,13 @@ async function loadAttraction() {
     const response = await fetch(`/api/attraction/${ATTRACTION_ID}`);
 
     // 🔴 fetch 只有「連不上」才會失敗；HTTP 400 / 500 都算成功回應，要自己檢查
+    // 400/404 = 景點真的不存在；5xx = 伺服器出事，是兩種不同的狀況，訊息要分開
     if (!response.ok) {
-      showError("找不到這個景點");
+      if (response.status === 400 || response.status === 404) {
+        showError("找不到這個景點");
+      } else {
+        showError("載入失敗，請稍後再試");
+      }
       return;
     }
 

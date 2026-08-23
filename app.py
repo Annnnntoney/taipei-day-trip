@@ -16,7 +16,9 @@ async def index(request: Request):
 	return FileResponse("./static/index.html", media_type="text/html")
 
 @app.get("/attraction/{id}", include_in_schema=False)
-async def attraction(request: Request, id: int):
+async def attraction(request: Request, id: str):
+	# id 收 str 不收 int：/attraction/abc 也要回這張頁面，
+	# 讓前端顯示「網址不正確」；宣告 int 會被 FastAPI 直接 422 擋掉，前端邏輯永遠跑不到
 	return FileResponse("./static/attraction.html", media_type="text/html")
 
 @app.get("/booking", include_in_schema=False)

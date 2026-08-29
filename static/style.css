@@ -445,3 +445,106 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   .nav__logo { font-size: 24px; }
   .nav__link { font-size: 14px; padding: 0 6px; }
 }
+
+/* ============================================================
+   會員彈窗（Part 4）  Figma: dialog 340 寬、頂部 10px 漸層裝飾條
+   首頁與景點頁共用；HTML 由 auth.js 注入
+   ============================================================ */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;                          /* top/right/bottom/left 全 0 = 蓋滿整個視窗 */
+  z-index: 200;                      /* nav 是 100，要蓋在它上面 */
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.dialog {
+  position: relative;
+  width: 340px;
+  max-width: calc(100% - 20px);      /* 手機上左右至少留 10px */
+  margin-top: 80px;
+  background: var(--color-white);
+  border-radius: 6px;
+  overflow: hidden;                  /* 讓頂部漸層條跟著圓角 */
+  box-shadow: var(--shadow-box);
+}
+
+/* Figma: Decorator Bar 340 × 10，青色漸層 */
+.dialog__bar {
+  height: 10px;
+  background: linear-gradient(270deg, #337788 0%, #66AABB 100%);
+}
+
+.dialog__close {
+  position: absolute;
+  top: 20px;
+  right: 15px;
+  padding: 5px;
+  line-height: 0;
+}
+
+.dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 15px 20px;
+}
+
+.dialog__title {
+  font-size: 24px;                   /* Header 3 - Bold 24 */
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+  color: var(--color-gray-70);
+  margin: 10px 0 5px;
+}
+
+.dialog__input {
+  height: 47px;
+  padding: 10px 15px;
+  font-size: 16px;
+  font-family: inherit;
+  border: 1px solid #CCCCCC;
+  border-radius: 5px;
+}
+
+.dialog__input:focus {
+  outline: 2px solid var(--color-primary);
+  border-color: transparent;
+}
+
+.dialog__submit {
+  height: 47px;
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--color-white);
+  background: var(--color-primary);
+  border-radius: 5px;
+}
+
+.dialog__submit:hover { background: #337788; }
+
+/* 錯誤（預設紅字）／成功（加 --success 變綠字）訊息；空字串時不佔高度 */
+.dialog__message {
+  font-size: 16px;
+  text-align: center;
+  color: #D0021B;
+}
+
+.dialog__message:empty { display: none; }
+
+.dialog__message--success { color: #2E8B57; }
+
+.dialog__switch {
+  font-size: 16px;
+  text-align: center;
+  color: var(--color-gray-70);
+}
+
+.dialog__link {
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}

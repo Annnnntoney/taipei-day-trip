@@ -18,6 +18,18 @@ CREATE TABLE attractions (
   INDEX idx_mrt (mrt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 會員（Part 4）
+-- 注意：整份 schema.sql 重跑會清空景點資料；只想加這張表時，單獨執行這個區塊即可
+DROP TABLE IF EXISTS members;
+CREATE TABLE members (
+  id         INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(100)  NOT NULL,
+  email      VARCHAR(255)  NOT NULL,
+  password   VARCHAR(255)  NOT NULL,              -- 存 bcrypt 雜湊，不存明文
+  created_at TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_email (email)                     -- 資料庫層擋重複註冊，不能只靠程式檢查
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE attraction_images (
   id            INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
   attraction_id INT          NOT NULL,

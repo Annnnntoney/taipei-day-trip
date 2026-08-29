@@ -1,8 +1,12 @@
 from fastapi import *
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 import contextlib
+import datetime
 import os
+import bcrypt
+import jwt
 import mysql.connector
 from dotenv import load_dotenv
 
@@ -16,7 +20,9 @@ async def index(request: Request):
 	return FileResponse("./static/index.html", media_type="text/html")
 
 @app.get("/attraction/{id}", include_in_schema=False)
-async def attraction(request: Request, id: int):
+async def attraction(request: Request, id: str):
+	# id 收 str 不收 int：/attraction/abc 也要回這張頁面，
+	# 讓前端顯示「網址不正確」；宣告 int 會被 FastAPI 直接 422 擋掉，前端邏輯永遠跑不到
 	return FileResponse("./static/attraction.html", media_type="text/html")
 
 @app.get("/booking", include_in_schema=False)
@@ -53,7 +59,8 @@ def dict_cursor():
     cursor = conn.cursor(dictionary=True)
     try:
         yield cursor
-    finally:
+        conn.commit()   # 🔴 connector 預設不自動提交：沒這行，INSERT 會在關閉連線時被回滾
+    finally:            # 出錯時跳過 commit，close 會自動回滾，資料不會寫一半
         cursor.close()
         conn.close()
 
@@ -82,6 +89,113 @@ def normalize_attraction(row, images):
     row["lat"] = float(row["lat"])      # DECIMAL is not JSON serializable
     row["lng"] = float(row["lng"])
     return row
+
+
+# ---------------------------------------------------
+# User APIs (Part 4)
+# ---------------------------------------------------
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_EXPIRE_DAYS = 7
+
+
+# 請求 body 的格式宣告：FastAPI 會自動解析 JSON 並檢查欄位存在，
+# 缺欄位或不是 JSON 時直接回 422，不會進到函式裡
+class SignUpInput(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class SignInInput(BaseModel):
+    email: str
+    password: str
+
+
+# 任何沒被接住的例外（DB 斷線等）統一回規格書要求的 500 格式，
+# 而不是 FastAPI 預設的 {"detail": "Internal Server Error"}
+@app.exception_handler(Exception)
+async def server_error_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": True, "message": "伺服器內部錯誤"},
+    )
+
+
+@app.post("/api/user")
+def sign_up(data: SignUpInput):
+    # 1. 基本驗證：strip 後為空視同沒填（BaseModel 只擋「缺欄位」，擋不了空字串）
+    name = data.name.strip()
+    email = data.email.strip()
+    if not name or not email or not data.password:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "註冊失敗，姓名、Email 與密碼皆不可為空"},
+        )
+
+    # 2. 密碼雜湊後才進資料庫：資料庫被偷走也拿不到明文密碼
+    hashed = bcrypt.hashpw(data.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    # 3. 直接 INSERT，靠資料表的 UNIQUE(email) 擋重複——
+    #    先 SELECT 再 INSERT 有時間差（race condition），交給資料庫判斷才可靠
+    try:
+        with dict_cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO members (name, email, password) VALUES (%s, %s, %s)",
+                (name, email, hashed),
+            )
+    except mysql.connector.IntegrityError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "註冊失敗，這個 Email 已經被註冊"},
+        )
+
+    return {"ok": True}
+
+
+@app.put("/api/user/auth")
+def sign_in(data: SignInInput):
+    # 1. 用 email 找會員
+    with dict_cursor() as cursor:
+        cursor.execute(
+            "SELECT id, name, email, password FROM members WHERE email = %s",
+            (data.email.strip(),),
+        )
+        member = cursor.fetchone()
+
+    # 2. 「查無此人」和「密碼錯誤」回同一句話：不讓人試探哪些 email 有註冊過
+    if member is None or not bcrypt.checkpw(
+        data.password.encode("utf-8"), member["password"].encode("utf-8")
+    ):
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "登入失敗，Email 或密碼錯誤"},
+        )
+
+    # 3. 簽發 token：exp 讓 token 七天後自動失效，PyJWT 解碼時會自動檢查
+    payload = {
+        "id": member["id"],
+        "name": member["name"],
+        "email": member["email"],
+        "exp": datetime.datetime.now(datetime.timezone.utc)
+        + datetime.timedelta(days=JWT_EXPIRE_DAYS),
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return {"token": token}
+
+
+@app.get("/api/user/auth")
+def get_auth(authorization: str = Header(None)):
+    # 依規格：沒登入（沒帶 token、token 壞掉或過期）一律回 {"data": null}，不是錯誤
+    if not authorization or not authorization.startswith("Bearer "):
+        return {"data": None}
+
+    token = authorization[len("Bearer "):]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.InvalidTokenError:  # 涵蓋過期、被竄改、格式錯誤
+        return {"data": None}
+
+    return {"data": {"id": payload["id"], "name": payload["name"], "email": payload["email"]}}
 
 
 # ---------------------------------------------------

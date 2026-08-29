@@ -450,6 +450,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
    會員彈窗（Part 4）  Figma: dialog 340 寬、頂部 10px 漸層裝飾條
    首頁與景點頁共用；HTML 由 auth.js 注入
    ============================================================ */
+/* 🔴 下面的 display:flex 優先權高於 hidden 屬性的瀏覽器內建 display:none，
+   要自己補一條，否則彈窗會在頁面載入時就直接開著 */
+.dialog-overlay[hidden] { display: none; }
+
 .dialog-overlay {
   position: fixed;
   inset: 0;                          /* top/right/bottom/left 全 0 = 蓋滿整個視窗 */
@@ -491,6 +495,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   gap: 10px;
   padding: 15px 15px 20px;
 }
+
+/* 🔴 上面的 display:flex 會蓋掉 hidden 屬性的瀏覽器內建 display:none，
+   必須自己補回來，否則登入/註冊兩張表單會同時出現 */
+.dialog__form[hidden] { display: none; }
 
 .dialog__title {
   font-size: 24px;                   /* Header 3 - Bold 24 */

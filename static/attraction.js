@@ -173,6 +173,9 @@ const bookingMessage = document.querySelector("#booking-message");
 bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  // 先等 auth.js 的登入狀態檢查完成，否則剛載入就點會把已登入者誤判成未登入
+  await Auth.ready();
+
   // 未登入：打開註冊/登入彈窗（auth.js 掛在 window.Auth 上），不呼叫 API
   if (!Auth.isSignedIn()) {
     Auth.openDialog();
@@ -197,11 +200,12 @@ bookingForm.addEventListener("submit", async (event) => {
     });
     const result = await response.json();
 
-    if (result.ok) {
+    if (response.ok && result.ok) {
       // 規格：一次只能有一筆預定行程，建立成功後導去預定行程頁面
       location.href = "/booking";
     } else {
-      bookingMessage.textContent = result.message;
+      // 422 這類 FastAPI 預設錯誤沒有 message 欄位，要有後備文字，不能顯示 undefined
+      bookingMessage.textContent = result.message || "預訂失敗，請稍後再試";
     }
   } catch (error) {
     console.error("預訂失敗：", error);

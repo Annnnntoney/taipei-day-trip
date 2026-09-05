@@ -97,7 +97,10 @@ async function checkSigninStatus() {
   }
 }
 
-checkSigninStatus();
+/* 🔴 checkSigninStatus 是非同步的：頁面剛載入的瞬間 isSignedIn 還是初始值 false。
+   把「檢查完成」存成 promise，所有依賴登入狀態的點擊行為都先 await 它，
+   否則已登入的使用者若在 API 回來前點擊，會被誤判成未登入 */
+const authReady = checkSigninStatus();
 
 
 /* ============================================================
@@ -122,8 +125,9 @@ function clearMessages() {
 }
 
 /* Part 4-6：右上角連結——已登入按下去是登出，未登入按下去開彈窗 */
-authLink.addEventListener("click", (event) => {
+authLink.addEventListener("click", async (event) => {
   event.preventDefault();   // <a href="#"> 預設會把網址加上 # 並捲到頁首，擋掉
+  await authReady;          // 等登入狀態確認完，避免把已登入者誤判成未登入
   if (isSignedIn) {
     localStorage.removeItem(TOKEN_KEY);  // 登出＝丟掉 token，後端不用知道
     location.reload();                   // 重新整理，讓狀態檢查重跑
@@ -132,13 +136,16 @@ authLink.addEventListener("click", (event) => {
   }
 });
 
-/* Part 5-3：導覽列「預定行程」——未登入開彈窗，已登入才真的導去 /booking */
-bookingLink.addEventListener("click", (event) => {
-  if (!isSignedIn) {
-    event.preventDefault();   // 擋掉 <a href="/booking"> 的預設導頁
+/* Part 5-3：導覽列「預定行程」——未登入開彈窗，已登入才導去 /booking。
+   因為要先 await 非同步的登入狀態，一律先擋掉預設導頁，確認後再自己導 */
+bookingLink.addEventListener("click", async (event) => {
+  event.preventDefault();
+  await authReady;
+  if (isSignedIn) {
+    location.href = "/booking";
+  } else {
     openDialog();
   }
-  // 已登入：不擋預設行為，讓瀏覽器自己導向 href="/booking"
 });
 
 closeBtn.addEventListener("click", closeDialog);
@@ -246,4 +253,5 @@ window.Auth = {
   isSignedIn: () => isSignedIn,
   openDialog,
   getToken: () => localStorage.getItem(TOKEN_KEY),
+  ready: () => authReady,   // 等這個 promise 完成後，isSignedIn() 才是可信的
 };

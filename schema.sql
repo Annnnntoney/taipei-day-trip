@@ -1,7 +1,12 @@
 -- Taipei Day Trip — 資料表結構
 -- 用法：mysql -u tdt -p taipei_day_trip < schema.sql
+-- ⚠️ 這是「整個重置」腳本：重跑會清空所有資料（含會員與預定行程），只想加單一張表時，單獨執行該表的 CREATE 區塊即可
 
+-- DROP 集中在最上面，依「子表 → 父表」順序：
+-- bookings 的外鍵指向 members 與 attractions，若先砍父表會被外鍵擋下（errno 3730）
+DROP TABLE IF EXISTS bookings;
 DROP TABLE IF EXISTS attraction_images;
+DROP TABLE IF EXISTS members;
 DROP TABLE IF EXISTS attractions;
 
 CREATE TABLE attractions (
@@ -19,8 +24,6 @@ CREATE TABLE attractions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 會員（Part 4）
--- 注意：整份 schema.sql 重跑會清空景點資料；只想加這張表時，單獨執行這個區塊即可
-DROP TABLE IF EXISTS members;
 CREATE TABLE members (
   id         INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name       VARCHAR(100)  NOT NULL,
@@ -41,9 +44,7 @@ CREATE TABLE attraction_images (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 預定行程（Part 5）
--- 注意：整份 schema.sql 重跑會清空景點資料；只想加這張表時，單獨執行這個區塊即可
 -- 每位會員同時只能有一筆預定行程：靠 UNIQUE(member_id) 保證，建立新預定時直接 ON DUPLICATE KEY UPDATE 覆蓋
-DROP TABLE IF EXISTS bookings;
 CREATE TABLE bookings (
   id            INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
   member_id     INT           NOT NULL,

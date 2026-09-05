@@ -352,6 +352,20 @@ def create_booking(data: BookingInput, member: dict = Depends(get_current_member
             content={"error": True, "message": "建立失敗，輸入資料格式不正確"},
         )
 
+    # 日期不能只信前端：字串要真的是合法日期（否則進 DB 才爆會變 500），也不能是過去
+    try:
+        booking_date = datetime.date.fromisoformat(data.date)
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立失敗，日期格式不正確"},
+        )
+    if booking_date < datetime.date.today():
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立失敗，日期不可為過去的日期"},
+        )
+
     with dict_cursor() as cursor:
         cursor.execute("SELECT id FROM attractions WHERE id = %s", (data.attractionId,))
         if cursor.fetchone() is None:
@@ -370,7 +384,7 @@ def create_booking(data: BookingInput, member: dict = Depends(get_current_member
             "  date = VALUES(date), "
             "  time = VALUES(time), "
             "  price = VALUES(price)",
-            (member["id"], data.attractionId, data.date, data.time, data.price),
+            (member["id"], data.attractionId, booking_date, data.time, data.price),
         )
 
     return {"ok": True}

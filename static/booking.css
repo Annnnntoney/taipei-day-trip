@@ -1,138 +1,197 @@
 /* ============================================================
    Taipei Day Trip — 預定行程頁專屬樣式（Part 5-2）
-   版面依據 Figma [Desktop] booking (w:1920) / [Mobile] booking (w:360)：
-   預定卡片（圖＋資訊＋刪除鈕）→ 聯絡資訊 → 信用卡付款資訊 → 總金額＋按鈕
+   尺寸皆取自 Figma 實測：
+   [Desktop] booking (3:210, w:1920) / [Mobile] booking (3:149, w:360)
+   內容欄 980（置中於 1200 容器）、分隔線 1200、
+   卡片圖 250×200、輸入框 200×38、區塊間距 40、欄位間距 15
    style.css 必須先載入（共用變數在那）
    ============================================================ */
 
+/* 空狀態時頁尾要撐滿剩餘高度（Figma: empty state 的 footer 高 865）
+   → 整頁改直向 flex，main 不長高、footer 吃掉剩餘空間 */
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+.booking-page { flex: 0 0 auto; }
+
+.footer {
+  flex: 1 0 auto;
+  height: auto;
+  min-height: var(--footer-height);
+  align-items: flex-start;
+  padding-top: 42px;          /* (104 - 19) / 2 ≈ 42：文字位置跟一般 104 高的頁尾一致 */
+}
+
+/* ---------- 版面容器 ---------- */
 .booking-page__inner {
-  max-width: var(--container);
-  margin: 40px auto 60px;
-  padding: 0 15px;
-  min-height: 300px;                    /* 空狀態時頁尾不會貼太上面 */
-  color: var(--color-gray-70);
+  width: 100%;
+  max-width: var(--container);          /* 1200 */
+  margin: 0 auto;
+  padding: 40px 0;                      /* Figma: nav(54) → headline y=94 上距 40；尾端同 40 */
 }
 
-.booking-page__greeting {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-primary);
-  margin-bottom: 20px;
+/* 內容欄 980，置中於 1200（Figma: 左右各留 110） */
+.booking-block {
+  max-width: 980px;
+  margin: 0 auto;
 }
 
-/* ---------- 沒有預定行程 ---------- */
+/* 標題與空狀態文字也對齊 980 內容欄 */
+.booking-page__headline,
 .booking-page__empty {
-  margin-top: 10px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* Figma: Button - Bold 19(16)、Gray 70 */
+.booking-page__headline {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 27px;
+  color: var(--color-gray-70);
+  margin-bottom: 30px;                  /* headline 底 121 → section y=151 */
+}
+
+.booking-page__empty {
   font-size: 16px;
   color: var(--color-gray-70);
 }
 
-/* ---------- 預定卡片：圖片＋資訊＋刪除鈕 ---------- */
-.booking-item {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--color-line);
+/* 分隔線橫跨整個 1200 容器（Figma: separator / main） */
+.booking-separator {
+  border: none;
+  border-top: 1px solid var(--color-line);
+  margin: 40px 0;                       /* Figma: 區塊 ↔ 分隔線 各 40 */
 }
 
-.booking-item__image {
-  flex: 0 0 160px;
-  width: 160px;
-  aspect-ratio: 4 / 3;
+/* ---------- 預定卡片（Figma: section 3:245） ---------- */
+.booking-card { display: flex; }
+
+.booking-card__image {
+  flex: 0 0 250px;
+  width: 250px;
+  height: 200px;                        /* Figma: picture 250×200 */
   object-fit: cover;
-  border-radius: 5px;
 }
 
-.booking-item__info { flex: 1; }
+.booking-card__info {
+  flex: 1;
+  margin-left: 30px;                    /* Figma: infor x=280 */
+}
 
-.booking-item__name {
+/* Figma: Body - Bold 16、Primary Cyan 70 */
+.booking-card__name {
   font-size: 16px;
   font-weight: 700;
+  line-height: 24px;
   color: var(--color-primary);
-  margin-bottom: 6px;
+  margin-bottom: 20px;                  /* 名稱列高 24 → 第一列欄位 y=44 */
 }
 
-.booking-item__row { font-size: 14px; line-height: 20px; }
-
-.booking-item__delete {
-  flex: 0 0 auto;
-  padding: 5px;
-  align-self: flex-start;
-}
-.booking-item__delete:hover { opacity: 0.7; }
-
-/* ---------- 聯絡資訊／信用卡付款資訊 ---------- */
-.booking-section { margin-bottom: 25px; }
-
-.booking-section__title {
+/* 每列高 24、列距 10（Figma: y=44/78/112/146）；標籤 Bold、值 Med，同為 Gray 70 */
+.booking-card__row {
   font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text);
+  line-height: 24px;
+  color: var(--color-gray-70);
   margin-bottom: 10px;
 }
+.booking-card__row:last-child { margin-bottom: 0; }
+.booking-card__label { font-weight: 700; margin-right: 5px; }
 
+.booking-card__delete {
+  flex: 0 0 auto;
+  align-self: flex-start;               /* Figma 桌機版：icon 對齊區塊右上角 */
+  padding: 0;
+  line-height: 0;
+}
+.booking-card__delete:hover { opacity: 0.7; }
+
+/* ---------- 聯絡資訊／信用卡付款資訊（Figma: 3:230 / 3:217） ---------- */
+
+/* Figma: Button - Bold 19(16)、Gray 70 */
+.booking-block__title {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--color-gray-70);
+  margin-bottom: 20px;                  /* 標題列高 24 → 第一列欄位 y=44 */
+}
+
+/* 欄位列高 38、列距 15（Figma: y=44/97/150） */
 .booking-field {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  min-height: 35px;
+  margin-bottom: 15px;
+}
+.booking-field:last-of-type { margin-bottom: 0; }
+
+/* Figma: 標籤寬 81、Body - Med 16、Gray 70 */
+.booking-field__label {
+  flex: 0 0 81px;
+  font-size: 16px;
+  color: var(--color-gray-70);
 }
 
-.booking-field__label { flex: 0 0 80px; }
-
+/* Figma: input Field (forContent) 200×38、padding 10、框線 Gray 300、圓角 5 */
 .booking-field__input {
-  flex: 0 1 280px;
-  height: 35px;
-  padding: 0 10px;
+  width: 200px;
+  height: 38px;
+  padding: 10px;
   border: 1px solid var(--color-line);
   border-radius: 5px;
+  background: var(--color-white);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--color-text);
 }
-.booking-field__input--small { flex-basis: 120px; }
+.booking-field__input::placeholder { color: var(--color-text-sub); }   /* Gray 50 #757575 */
 
-.booking-section__note {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--color-text-sub);
+/* Figma: field notice — Body - Bold 16、Gray 70 */
+.booking-block__notice {
+  margin-top: 15px;                     /* 最後欄位底 188 → notice y=203 */
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--color-gray-70);
 }
 
-/* ---------- 總金額＋確認付款 ---------- */
-.booking-page__total {
+/* ---------- 總價＋確認按鈕（Figma: confirm 3:212，靠右對齊） ---------- */
+.booking-confirm {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 12px;
 }
 
-.booking-page__total-amount { font-size: 16px; font-weight: 700; color: var(--color-text); }
+.booking-confirm__total {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+  color: var(--color-gray-70);
+}
 
-.booking-page__pay-btn {
-  width: 154px;
-  height: 36px;
+/* Figma: button (forBooking) — padding 10/20、圓角 5、Button - Reg 19(16)、白字 */
+.booking-confirm__btn {
+  margin-top: 22px;                     /* Figma: 總價列高 20 → 按鈕 y=42 */
+  padding: 10px 20px;
   border-radius: 5px;
   background: var(--color-primary);
   color: var(--color-white);
-  font-size: 16px;
+  font-size: 19px;
+  line-height: 16px;
 }
-.booking-page__pay-btn:hover { filter: brightness(1.1); }
+.booking-confirm__btn:hover { filter: brightness(1.1); }
 
-/* ---------- RWD：手機版預定卡片改上下堆疊，刪除鈕移到右下角 ---------- */
+/* ---------- RWD  Figma: [Mobile] booking (w:360)，容器 340 ---------- */
+@media (max-width: 1280px) {
+  .booking-page__inner { padding-left: 10px; padding-right: 10px; }
+}
+
 @media (max-width: 600px) {
-  .booking-item {
+  /* 卡片改直向：圖滿版 340×200，資訊在下，刪除鈕移到右下角 */
+  .booking-card {
     position: relative;
     flex-direction: column;
-    align-items: stretch;
   }
-  .booking-item__image { width: 100%; flex-basis: auto; }
-  .booking-item__delete { position: absolute; right: 0; bottom: 20px; }
-
-  .booking-field__label { flex-basis: 70px; }
-  .booking-field__input { flex-basis: auto; }
+  .booking-card__image { flex-basis: auto; width: 100%; }
+  .booking-card__info { margin-left: 0; margin-top: 30px; }   /* Figma: img 底 351 → infor y=381 */
+  .booking-card__delete { position: absolute; right: 0; bottom: 0; }
 }

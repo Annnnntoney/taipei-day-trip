@@ -1,11 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking</title>
+  <title>預定行程 - 台北一日遊</title>
+  <!-- 內嵌 SVG 圖示：避免瀏覽器自動請求 /favicon.ico 而得到 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23448899'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E台%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/booking.css">
 </head>
 <body>
-  
+  <!-- ============ 導覽列 ============ -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="/">台北一日遊</a>
+      <nav class="nav__menu">
+        <a class="nav__link" href="/booking" id="booking-link">預定行程</a>
+        <!-- 文字與行為由 auth.js 控制：未登入顯示「登入/註冊」開彈窗，已登入變「登出系統」 -->
+        <a class="nav__link" href="#" id="auth-link">登入/註冊</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ 預定行程內容 ============ -->
+  <main class="booking-page">
+    <div class="booking-page__inner">
+
+      <!-- Part 5-5 步驟 2：沒有預定行程資料時顯示 -->
+      <p class="booking-page__empty" id="empty-message" hidden>沒有預定行程</p>
+
+      <!-- 有預定行程資料時顯示 -->
+      <div class="booking-card" id="booking-card" hidden>
+        <img class="booking-card__image" id="booking-image" alt="">
+
+        <div class="booking-card__info">
+          <h1 class="booking-card__name" id="booking-name"></h1>
+          <p class="booking-card__address" id="booking-address"></p>
+
+          <div class="booking-card__row">
+            <span class="booking-card__label">日期：</span>
+            <span id="booking-date"></span>
+          </div>
+          <div class="booking-card__row">
+            <span class="booking-card__label">時間：</span>
+            <span id="booking-time"></span>
+          </div>
+          <div class="booking-card__row">
+            <span class="booking-card__label">費用：</span>
+            <span id="booking-price"></span>
+          </div>
+
+          <!-- Part 5-5 步驟 3：刪除按鈕 -->
+          <button type="button" class="booking-card__delete" id="delete-btn">取消預定行程</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ============ 頁尾 ============ -->
+  <footer class="footer">
+    COPYRIGHT © 2021 台北一日遊
+  </footer>
+
+  <script src="/static/auth.js"></script>
+  <script src="/static/booking.js"></script>
 </body>
 </html>

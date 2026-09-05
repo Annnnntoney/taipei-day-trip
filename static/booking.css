@@ -1,0 +1,71 @@
+/* ============================================================
+   Taipei Day Trip — 預定行程頁專屬樣式（Part 5-2）
+   版面比照 attraction.css 的兩欄慣例：圖左資訊右，斷點跟著同一套
+   style.css 必須先載入（共用變數在那）
+   ============================================================ */
+
+.booking-page__inner {
+  max-width: var(--container);
+  margin: 40px auto 60px;
+  padding: 0 15px;
+  min-height: 300px;                    /* 空狀態時頁尾不會貼太上面 */
+}
+
+/* ---------- 沒有預定行程 ---------- */
+.booking-page__empty {
+  margin-top: 60px;
+  text-align: center;
+  font-size: 19px;
+  color: var(--color-gray-70);
+}
+
+/* ---------- 有預定行程：卡片 ---------- */
+.booking-card {
+  display: grid;
+  grid-template-columns: 400fr 600fr;
+  gap: 30px;
+}
+
+.booking-card__image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.booking-card__info { color: var(--color-gray-70); }
+
+.booking-card__name {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 33px;
+  color: var(--color-text);
+}
+
+.booking-card__address { margin-top: 10px; font-size: 16px; line-height: 22px; }
+
+.booking-card__row {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 16px;
+}
+
+.booking-card__label { flex: 0 0 60px; font-weight: 500; }
+
+.booking-card__delete {
+  margin-top: 30px;
+  width: 154px;
+  height: 36px;
+  border-radius: 5px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 19px;
+}
+.booking-card__delete:hover { filter: brightness(1.1); }
+
+/* ---------- RWD ---------- */
+@media (max-width: 900px) {
+  .booking-card { grid-template-columns: 1fr; gap: 20px; }
+}

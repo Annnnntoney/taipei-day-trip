@@ -33,9 +33,29 @@ CREATE TABLE members (
 CREATE TABLE attraction_images (
   id            INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
   attraction_id INT          NOT NULL,
-  url           VARCHAR(255) NOT NULL,              
+  url           VARCHAR(255) NOT NULL,
   INDEX idx_attraction (attraction_id),
   CONSTRAINT fk_images_attraction
+    FOREIGN KEY (attraction_id) REFERENCES attractions(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 預定行程（Part 5）
+-- 注意：整份 schema.sql 重跑會清空景點資料；只想加這張表時，單獨執行這個區塊即可
+-- 每位會員同時只能有一筆預定行程：靠 UNIQUE(member_id) 保證，建立新預定時直接 ON DUPLICATE KEY UPDATE 覆蓋
+DROP TABLE IF EXISTS bookings;
+CREATE TABLE bookings (
+  id            INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  member_id     INT           NOT NULL,
+  attraction_id INT           NOT NULL,
+  date          DATE          NOT NULL,
+  time          VARCHAR(10)   NOT NULL,              -- "morning" 或 "afternoon"
+  price         INT           NOT NULL,               -- 2000 或 2500
+  UNIQUE KEY uq_member (member_id),
+  CONSTRAINT fk_booking_member
+    FOREIGN KEY (member_id) REFERENCES members(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_booking_attraction
     FOREIGN KEY (attraction_id) REFERENCES attractions(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

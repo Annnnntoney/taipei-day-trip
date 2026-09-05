@@ -183,19 +183,25 @@ def sign_in(data: SignInInput):
     return {"token": token}
 
 
-@app.get("/api/user/auth")
-def get_auth(authorization: str = Header(None)):
-    # 依規格：沒登入（沒帶 token、token 壞掉或過期）一律回 {"data": null}，不是錯誤
+def get_current_member(authorization: str = Header(None)):
+    """解出目前登入的會員 payload；沒登入或 token 無效一律回 None，交給呼叫端決定怎麼回應。"""
     if not authorization or not authorization.startswith("Bearer "):
-        return {"data": None}
+        return None
 
     token = authorization[len("Bearer "):]
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except jwt.InvalidTokenError:  # 涵蓋過期、被竄改、格式錯誤
+        return None
+
+
+@app.get("/api/user/auth")
+def get_auth(member: dict = Depends(get_current_member)):
+    # 依規格：沒登入（沒帶 token、token 壞掉或過期）一律回 {"data": null}，不是錯誤
+    if member is None:
         return {"data": None}
 
-    return {"data": {"id": payload["id"], "name": payload["name"], "email": payload["email"]}}
+    return {"data": {"id": member["id"], "name": member["name"], "email": member["email"]}}
 
 
 # ---------------------------------------------------
@@ -273,3 +279,110 @@ def get_attractions(page: int = 0, keyword: str = None, category: str = None):
     data = [normalize_attraction(r, img_map.get(r["id"], [])) for r in rows]
 
     return {"nextPage": next_page, "data": data}
+
+
+# ---------------------------------------------------
+# Booking APIs (Part 5)
+# 3 支都需要授權：未登入一律回 403，跟規格書一致
+# ---------------------------------------------------
+class BookingInput(BaseModel):
+    attractionId: int
+    date: str
+    time: str
+    price: int
+
+
+def require_member(member):
+    """三支 Booking API 共用的授權檢查；沒登入直接回規格書要求的 403。"""
+    if member is None:
+        return JSONResponse(
+            status_code=403,
+            content={"error": True, "message": "請先登入會員"},
+        )
+    return None
+
+
+@app.get("/api/booking")
+def get_booking(member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    with dict_cursor() as cursor:
+        # 一個會員最多一筆預定行程，JOIN 景點取顯示用的名稱/地址，子查詢取第一張圖
+        cursor.execute(
+            "SELECT b.date, b.time, b.price, "
+            "       a.id AS attraction_id, a.name, a.address, "
+            "       (SELECT url FROM attraction_images "
+            "        WHERE attraction_id = a.id ORDER BY id LIMIT 1) AS image "
+            "FROM bookings b "
+            "JOIN attractions a ON a.id = b.attraction_id "
+            "WHERE b.member_id = %s",
+            (member["id"],),
+        )
+        booking = cursor.fetchone()
+
+    if booking is None:
+        return {"data": None}
+
+    return {
+        "data": {
+            "attraction": {
+                "id": booking["attraction_id"],
+                "name": booking["name"],
+                "address": booking["address"],
+                "image": booking["image"],
+            },
+            "date": booking["date"].isoformat(),   # DATE 欄位是 date 物件，不是 JSON serializable
+            "time": booking["time"],
+            "price": booking["price"],
+        }
+    }
+
+
+@app.post("/api/booking")
+def create_booking(data: BookingInput, member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    if data.time not in ("morning", "afternoon") or data.price not in (2000, 2500):
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立失敗，輸入資料格式不正確"},
+        )
+
+    with dict_cursor() as cursor:
+        cursor.execute("SELECT id FROM attractions WHERE id = %s", (data.attractionId,))
+        if cursor.fetchone() is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": True, "message": "建立失敗，景點編號不存在"},
+            )
+
+        # 每位會員同時只能有一筆預定行程（bookings.member_id 有 UNIQUE）：
+        # 已存在就直接覆蓋成新的一筆，不用先查再決定 INSERT 還是 UPDATE
+        cursor.execute(
+            "INSERT INTO bookings (member_id, attraction_id, date, time, price) "
+            "VALUES (%s, %s, %s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE "
+            "  attraction_id = VALUES(attraction_id), "
+            "  date = VALUES(date), "
+            "  time = VALUES(time), "
+            "  price = VALUES(price)",
+            (member["id"], data.attractionId, data.date, data.time, data.price),
+        )
+
+    return {"ok": True}
+
+
+@app.delete("/api/booking")
+def delete_booking(member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    with dict_cursor() as cursor:
+        cursor.execute("DELETE FROM bookings WHERE member_id = %s", (member["id"],))
+
+    return {"ok": True}

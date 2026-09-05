@@ -151,6 +151,14 @@
 }
 .booking__submit:hover { filter: brightness(1.1); }
 
+/* 訂購失敗訊息；沿用 dialog__message 的紅字慣例，空字串時不佔高度 */
+.booking__message {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #D0021B;
+}
+.booking__message:empty { display: none; }
+
 /* ---------- 下半部：描述、地址、交通 ---------- */
 .detail__bottom {
   max-width: var(--container);

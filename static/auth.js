@@ -48,9 +48,11 @@ document.body.insertAdjacentHTML("beforeend", `
 `);
 
 /* ---------- DOM 元素 ----------
-   authLink 是兩頁 HTML 裡本來就有的「登入/註冊」連結（id="auth-link"）
+   authLink 是每頁 HTML 裡本來就有的「登入/註冊」連結（id="auth-link"）
+   bookingLink 是導覽列的「預定行程」連結（id="booking-link"）
    其餘都在上面剛注入的彈窗裡                                       */
 const authLink      = document.querySelector("#auth-link");
+const bookingLink   = document.querySelector("#booking-link");
 const overlayEl     = document.querySelector("#auth-overlay");
 const closeBtn      = document.querySelector("#auth-close");
 const signinForm    = document.querySelector("#signin-form");
@@ -128,6 +130,15 @@ authLink.addEventListener("click", (event) => {
   } else {
     openDialog();
   }
+});
+
+/* Part 5-3：導覽列「預定行程」——未登入開彈窗，已登入才真的導去 /booking */
+bookingLink.addEventListener("click", (event) => {
+  if (!isSignedIn) {
+    event.preventDefault();   // 擋掉 <a href="/booking"> 的預設導頁
+    openDialog();
+  }
+  // 已登入：不擋預設行為，讓瀏覽器自己導向 href="/booking"
 });
 
 closeBtn.addEventListener("click", closeDialog);
@@ -225,3 +236,14 @@ function showMessage(element, text, isSuccess) {
   element.textContent = text;
   element.classList.toggle("dialog__message--success", isSuccess);
 }
+
+
+/* ============================================================
+   對外介面：其他頁面的 JS（attraction.js、booking.js）要判斷登入狀態、
+   開彈窗、拿 token 時，都透過這個物件，不用重複寫一份 localStorage 邏輯
+   ============================================================ */
+window.Auth = {
+  isSignedIn: () => isSignedIn,
+  openDialog,
+  getToken: () => localStorage.getItem(TOKEN_KEY),
+};

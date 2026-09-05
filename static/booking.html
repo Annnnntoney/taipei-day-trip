@@ -26,34 +26,77 @@
   <main class="booking-page">
     <div class="booking-page__inner">
 
-      <!-- Part 5-5 步驟 2：沒有預定行程資料時顯示 -->
-      <p class="booking-page__empty" id="empty-message" hidden>沒有預定行程</p>
+      <h1 class="booking-page__greeting" id="greeting">待預訂的行程如下：</h1>
 
       <!-- 有預定行程資料時顯示 -->
-      <div class="booking-card" id="booking-card" hidden>
-        <img class="booking-card__image" id="booking-image" alt="">
+      <div class="booking-page__content" id="booking-content" hidden>
 
-        <div class="booking-card__info">
-          <h1 class="booking-card__name" id="booking-name"></h1>
-          <p class="booking-card__address" id="booking-address"></p>
+        <!-- 預定卡片：圖片＋景點資訊＋刪除鈕 -->
+        <div class="booking-item">
+          <img class="booking-item__image" id="booking-image" alt="">
 
-          <div class="booking-card__row">
-            <span class="booking-card__label">日期：</span>
-            <span id="booking-date"></span>
-          </div>
-          <div class="booking-card__row">
-            <span class="booking-card__label">時間：</span>
-            <span id="booking-time"></span>
-          </div>
-          <div class="booking-card__row">
-            <span class="booking-card__label">費用：</span>
-            <span id="booking-price"></span>
+          <div class="booking-item__info">
+            <p class="booking-item__name" id="booking-name"></p>
+            <p class="booking-item__row">日期：<span id="booking-date"></span></p>
+            <p class="booking-item__row">時間：<span id="booking-time"></span></p>
+            <p class="booking-item__row">費用：<span id="booking-price"></span></p>
+            <p class="booking-item__row">地址：<span id="booking-address"></span></p>
           </div>
 
           <!-- Part 5-5 步驟 3：刪除按鈕 -->
-          <button type="button" class="booking-card__delete" id="delete-btn">取消預定行程</button>
+          <button type="button" class="booking-item__delete" id="delete-btn" aria-label="刪除預定行程">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    d="M4 7h16M9 7V4h6v3m-8 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 聯絡資訊：讀取自登入會員資料，手機號碼供使用者填寫 -->
+        <section class="booking-section">
+          <h2 class="booking-section__title">您的聯絡資訊</h2>
+          <div class="booking-field">
+            <span class="booking-field__label">聯絡姓名：</span>
+            <span id="contact-name"></span>
+          </div>
+          <div class="booking-field">
+            <span class="booking-field__label">聯絡信箱：</span>
+            <span id="contact-email"></span>
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="contact-phone">手機號碼：</label>
+            <input class="booking-field__input" type="tel" id="contact-phone" placeholder="請輸入手機號碼">
+          </div>
+          <p class="booking-section__note">
+            請保持手機暢通，導遊人員將以此號碼與您確認行程狀況，本公司將完全保障您的個資安全。
+          </p>
+        </section>
+
+        <!-- 信用卡付款資訊：視覺呈現用，付款串接留待之後的課程進度 -->
+        <section class="booking-section">
+          <h2 class="booking-section__title">信用卡付款資訊</h2>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-number">卡片號碼：</label>
+            <input class="booking-field__input" type="text" id="card-number" placeholder="•••• •••• •••• ••••">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-expiry">到期日期：</label>
+            <input class="booking-field__input booking-field__input--small" type="text" id="card-expiry" placeholder="MM / YY">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-cvv">安全碼：</label>
+            <input class="booking-field__input booking-field__input--small" type="text" id="card-cvv" placeholder="CVV">
+          </div>
+        </section>
+
+        <div class="booking-page__total">
+          <p class="booking-page__total-amount">總金額：<span id="total-price"></span></p>
+          <button type="button" class="booking-page__pay-btn">確認訂單並付款</button>
         </div>
       </div>
+
+      <!-- Part 5-5 步驟 2：沒有預定行程資料時顯示 -->
+      <p class="booking-page__empty" id="empty-message" hidden>沒有預定行程</p>
 
     </div>
   </main>

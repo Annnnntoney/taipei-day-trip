@@ -1,6 +1,7 @@
 /* ============================================================
    Taipei Day Trip — 預定行程頁專屬樣式（Part 5-2）
-   版面比照 attraction.css 的兩欄慣例：圖左資訊右，斷點跟著同一套
+   版面依據 Figma [Desktop] booking (w:1920) / [Mobile] booking (w:360)：
+   預定卡片（圖＋資訊＋刪除鈕）→ 聯絡資訊 → 信用卡付款資訊 → 總金額＋按鈕
    style.css 必須先載入（共用變數在那）
    ============================================================ */
 
@@ -9,63 +10,129 @@
   margin: 40px auto 60px;
   padding: 0 15px;
   min-height: 300px;                    /* 空狀態時頁尾不會貼太上面 */
+  color: var(--color-gray-70);
+}
+
+.booking-page__greeting {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 20px;
 }
 
 /* ---------- 沒有預定行程 ---------- */
 .booking-page__empty {
-  margin-top: 60px;
-  text-align: center;
-  font-size: 19px;
+  margin-top: 10px;
+  font-size: 16px;
   color: var(--color-gray-70);
 }
 
-/* ---------- 有預定行程：卡片 ---------- */
-.booking-card {
-  display: grid;
-  grid-template-columns: 400fr 600fr;
-  gap: 30px;
+/* ---------- 預定卡片：圖片＋資訊＋刪除鈕 ---------- */
+.booking-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--color-line);
 }
 
-.booking-card__image {
-  width: 100%;
+.booking-item__image {
+  flex: 0 0 160px;
+  width: 160px;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 5px;
 }
 
-.booking-card__info { color: var(--color-gray-70); }
+.booking-item__info { flex: 1; }
 
-.booking-card__name {
-  font-size: 24px;
+.booking-item__name {
+  font-size: 16px;
   font-weight: 700;
-  line-height: 33px;
-  color: var(--color-text);
+  color: var(--color-primary);
+  margin-bottom: 6px;
 }
 
-.booking-card__address { margin-top: 10px; font-size: 16px; line-height: 22px; }
+.booking-item__row { font-size: 14px; line-height: 20px; }
 
-.booking-card__row {
-  margin-top: 15px;
+.booking-item__delete {
+  flex: 0 0 auto;
+  padding: 5px;
+  align-self: flex-start;
+}
+.booking-item__delete:hover { opacity: 0.7; }
+
+/* ---------- 聯絡資訊／信用卡付款資訊 ---------- */
+.booking-section { margin-bottom: 25px; }
+
+.booking-section__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 10px;
+}
+
+.booking-field {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 16px;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  min-height: 35px;
 }
 
-.booking-card__label { flex: 0 0 60px; font-weight: 500; }
+.booking-field__label { flex: 0 0 80px; }
 
-.booking-card__delete {
-  margin-top: 30px;
+.booking-field__input {
+  flex: 0 1 280px;
+  height: 35px;
+  padding: 0 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.booking-field__input--small { flex-basis: 120px; }
+
+.booking-section__note {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--color-text-sub);
+}
+
+/* ---------- 總金額＋確認付款 ---------- */
+.booking-page__total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.booking-page__total-amount { font-size: 16px; font-weight: 700; color: var(--color-text); }
+
+.booking-page__pay-btn {
   width: 154px;
   height: 36px;
   border-radius: 5px;
   background: var(--color-primary);
   color: var(--color-white);
-  font-size: 19px;
+  font-size: 16px;
 }
-.booking-card__delete:hover { filter: brightness(1.1); }
+.booking-page__pay-btn:hover { filter: brightness(1.1); }
 
-/* ---------- RWD ---------- */
-@media (max-width: 900px) {
-  .booking-card { grid-template-columns: 1fr; gap: 20px; }
+/* ---------- RWD：手機版預定卡片改上下堆疊，刪除鈕移到右下角 ---------- */
+@media (max-width: 600px) {
+  .booking-item {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .booking-item__image { width: 100%; flex-basis: auto; }
+  .booking-item__delete { position: absolute; right: 0; bottom: 20px; }
+
+  .booking-field__label { flex-basis: 70px; }
+  .booking-field__input { flex-basis: auto; }
 }

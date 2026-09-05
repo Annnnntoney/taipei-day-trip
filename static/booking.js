@@ -6,15 +6,21 @@
 const TIME_LABEL = { morning: "上半天", afternoon: "下半天" };
 
 /* ---------- DOM 元素 ---------- */
-const emptyMessage = document.querySelector("#empty-message");
-const bookingCard  = document.querySelector("#booking-card");
-const imageEl      = document.querySelector("#booking-image");
-const nameEl       = document.querySelector("#booking-name");
-const addressEl    = document.querySelector("#booking-address");
-const dateEl       = document.querySelector("#booking-date");
-const timeEl       = document.querySelector("#booking-time");
-const priceEl      = document.querySelector("#booking-price");
-const deleteBtn    = document.querySelector("#delete-btn");
+const greetingEl     = document.querySelector("#greeting");
+const emptyMessage   = document.querySelector("#empty-message");
+const bookingContent = document.querySelector("#booking-content");
+const imageEl        = document.querySelector("#booking-image");
+const nameEl         = document.querySelector("#booking-name");
+const dateEl         = document.querySelector("#booking-date");
+const timeEl         = document.querySelector("#booking-time");
+const priceEl        = document.querySelector("#booking-price");
+const addressEl      = document.querySelector("#booking-address");
+const totalPriceEl   = document.querySelector("#total-price");
+const contactNameEl  = document.querySelector("#contact-name");
+const contactEmailEl = document.querySelector("#contact-email");
+const deleteBtn      = document.querySelector("#delete-btn");
+
+let currentUser = null;   // 存登入會員資料，渲染問候語與聯絡資訊用
 
 /**
  * Part 5-5 步驟 1：先確認登入狀態，沒登入就導回首頁。
@@ -37,6 +43,9 @@ async function checkSignedInThenLoad() {
       location.href = "/";
       return;
     }
+
+    currentUser = result.data;
+    greetingEl.textContent = `您好，${currentUser.name}，待預訂的行程如下：`;
 
     loadBooking();
   } catch (error) {
@@ -62,20 +71,25 @@ async function loadBooking() {
 function render(booking) {
   if (!booking) {
     emptyMessage.hidden = false;
-    bookingCard.hidden = true;
+    bookingContent.hidden = true;
     return;
   }
 
   emptyMessage.hidden = true;
-  bookingCard.hidden = false;
+  bookingContent.hidden = false;
 
   imageEl.src = booking.attraction.image;
   imageEl.alt = booking.attraction.name;
   nameEl.textContent = booking.attraction.name;
-  addressEl.textContent = booking.attraction.address;
   dateEl.textContent = booking.date;
   timeEl.textContent = TIME_LABEL[booking.time];
   priceEl.textContent = `新台幣 ${booking.price} 元`;
+  addressEl.textContent = booking.attraction.address;
+  totalPriceEl.textContent = `新台幣 ${booking.price} 元`;
+
+  // 聯絡資訊直接沿用登入會員的姓名／email，不用使用者重打一次
+  contactNameEl.textContent = currentUser.name;
+  contactEmailEl.textContent = currentUser.email;
 }
 
 /** Part 5-5 步驟 3：刪除預定行程，成功後重新整理頁面。 */

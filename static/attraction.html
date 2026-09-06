@@ -15,7 +15,7 @@
     <div class="nav__inner">
       <a class="nav__logo" href="/">台北一日遊</a>
       <nav class="nav__menu">
-        <a class="nav__link" href="/booking">預定行程</a>
+        <a class="nav__link" href="/booking" id="booking-link">預定行程</a>
         <!-- 文字與行為由 auth.js 控制：未登入顯示「登入/註冊」開彈窗，已登入變「登出系統」 -->
         <a class="nav__link" href="#" id="auth-link">登入/註冊</a>
       </nav>
@@ -81,6 +81,7 @@
           </div>
 
           <button type="submit" class="booking__submit">開始預約行程</button>
+          <p class="booking__message" id="booking-message"></p>
         </form>
       </section>
 

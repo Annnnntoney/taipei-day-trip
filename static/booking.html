@@ -1,11 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Booking</title>
+  <title>預定行程 - 台北一日遊</title>
+  <!-- 內嵌 SVG 圖示：避免瀏覽器自動請求 /favicon.ico 而得到 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23448899'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E台%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/booking.css">
 </head>
 <body>
-  
+  <!-- ============ 導覽列 ============ -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="/">台北一日遊</a>
+      <nav class="nav__menu">
+        <a class="nav__link" href="/booking" id="booking-link">預定行程</a>
+        <!-- 文字與行為由 auth.js 控制：未登入顯示「登入/註冊」開彈窗，已登入變「登出系統」 -->
+        <a class="nav__link" href="#" id="auth-link">登入/註冊</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ 預定行程內容  Figma: [Desktop] booking (3:210) / [Mobile] booking (3:149) ============ -->
+  <main class="booking-page">
+    <div class="booking-page__inner">
+
+      <h1 class="booking-page__headline">您好，<span id="member-name"></span>，待預訂的行程如下：</h1>
+
+      <!-- 有預定行程資料時顯示 -->
+      <div id="booking-content" hidden>
+
+        <!-- 預定卡片：圖 250×200＋資訊＋刪除鈕（Figma: section 3:245） -->
+        <section class="booking-block">
+          <div class="booking-card">
+            <img class="booking-card__image" id="booking-image" alt="">
+
+            <div class="booking-card__info">
+              <p class="booking-card__name" id="booking-name"></p>
+              <p class="booking-card__row"><span class="booking-card__label">日期：</span><span id="booking-date"></span></p>
+              <p class="booking-card__row"><span class="booking-card__label">時間：</span><span id="booking-time"></span></p>
+              <p class="booking-card__row"><span class="booking-card__label">費用：</span><span id="booking-price"></span></p>
+              <p class="booking-card__row"><span class="booking-card__label">地點：</span><span id="booking-address"></span></p>
+            </div>
+
+            <!-- Part 5-5 步驟 3：刪除按鈕（Figma: icon / delete 30×30，官方匯出圖檔） -->
+            <button type="button" class="booking-card__delete" id="delete-btn" aria-label="刪除預定行程">
+              <img src="/static/images/icon-delete.png" alt="" width="30" height="30">
+            </button>
+          </div>
+        </section>
+
+        <hr class="booking-separator">
+
+        <!-- 聯絡資訊（Figma: contact form 3:230）：姓名/信箱帶入登入會員資料 -->
+        <section class="booking-block">
+          <h2 class="booking-block__title">您的聯絡資訊</h2>
+          <div class="booking-field">
+            <label class="booking-field__label" for="contact-name">聯絡姓名：</label>
+            <input class="booking-field__input" type="text" id="contact-name">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="contact-email">連絡信箱：</label>
+            <input class="booking-field__input" type="email" id="contact-email">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="contact-phone">手機號碼：</label>
+            <input class="booking-field__input" type="tel" id="contact-phone">
+          </div>
+          <p class="booking-block__notice">請保持手機暢通，準時到達，導覽人員將用手機與您聯繫，務必留下正確的聯絡方式。</p>
+        </section>
+
+        <hr class="booking-separator">
+
+        <!-- 信用卡付款資訊（Figma: payment 3:217）：版面呈現，金流串接是之後課程的進度 -->
+        <section class="booking-block">
+          <h2 class="booking-block__title">信用卡付款資訊</h2>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-number">卡片號碼：</label>
+            <input class="booking-field__input" type="text" id="card-number" placeholder="**** **** **** ****">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-expiry">過期時間：</label>
+            <input class="booking-field__input" type="text" id="card-expiry" placeholder="MM / YY">
+          </div>
+          <div class="booking-field">
+            <label class="booking-field__label" for="card-cvv">驗證密碼：</label>
+            <input class="booking-field__input" type="text" id="card-cvv" placeholder="CVV">
+          </div>
+        </section>
+
+        <hr class="booking-separator">
+
+        <!-- 總價＋確認按鈕（Figma: confirm 3:212） -->
+        <section class="booking-block booking-confirm">
+          <p class="booking-confirm__total">總價：<span id="total-price"></span></p>
+          <button type="button" class="booking-confirm__btn">確認訂購並付款</button>
+        </section>
+
+      </div>
+
+      <!-- Part 5-5 步驟 2：沒有預定行程資料時顯示（Figma: empty state 3:147） -->
+      <p class="booking-page__empty" id="empty-message" hidden>目前沒有任何待預訂的行程</p>
+
+    </div>
+  </main>
+
+  <!-- ============ 頁尾 ============ -->
+  <footer class="footer">
+    COPYRIGHT © 2021 台北一日遊
+  </footer>
+
+  <script src="/static/auth.js"></script>
+  <script src="/static/booking.js"></script>
 </body>
 </html>

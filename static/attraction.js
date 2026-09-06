@@ -165,9 +165,52 @@ bookingForm.addEventListener("change", updatePrice);
 // 🔴 載入時先算一次，否則使用者沒點過任何東西時價格是 HTML 寫死的字
 updatePrice();
 
-// 目前還沒有預訂功能（Part 4 才做），先擋掉送出時的重新整理
-bookingForm.addEventListener("submit", (event) => {
+/* ============================================================
+   Part 5-4：建立一筆預定行程
+   ============================================================ */
+const bookingMessage = document.querySelector("#booking-message");
+
+bookingForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  // 先等 auth.js 的登入狀態檢查完成，否則剛載入就點會把已登入者誤判成未登入
+  await Auth.ready();
+
+  // 未登入：打開註冊/登入彈窗（auth.js 掛在 window.Auth 上），不呼叫 API
+  if (!Auth.isSignedIn()) {
+    Auth.openDialog();
+    return;
+  }
+
+  const time = bookingForm.time.value;
+
+  try {
+    const response = await fetch("/api/booking", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Auth.getToken()}`,
+      },
+      body: JSON.stringify({
+        attractionId: Number(ATTRACTION_ID),
+        date: bookingForm.date.value,
+        time,
+        price: PRICE[time],
+      }),
+    });
+    const result = await response.json();
+
+    if (response.ok && result.ok) {
+      // 規格：一次只能有一筆預定行程，建立成功後導去預定行程頁面
+      location.href = "/booking";
+    } else {
+      // 422 這類 FastAPI 預設錯誤沒有 message 欄位，要有後備文字，不能顯示 undefined
+      bookingMessage.textContent = result.message || "預訂失敗，請稍後再試";
+    }
+  } catch (error) {
+    console.error("預訂失敗：", error);
+    bookingMessage.textContent = "連線失敗，請稍後再試";
+  }
 });
 
 // 日期不能選過去。⚠️ 不用 toISOString()，它會轉 UTC，早上 8 點前會少一天

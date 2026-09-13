@@ -1,0 +1,64 @@
+/* ============================================================
+   Taipei Day Trip — 感謝頁樣式（Part 6-5）
+   Guide 6-5：頁面版面可自由設計，只要求 nav/footer 跟其他頁一致，
+   所以這裡沒有對應的 Figma 稿，尺寸沿用 booking 頁同一套間距慣例
+   style.css 必須先載入（共用變數在那）
+   ============================================================ */
+
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+.thankyou-page { flex: 1 0 auto; }
+
+.thankyou-page__inner {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 60px 10px;
+  text-align: center;
+}
+
+.thankyou-page__title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 20px;
+}
+
+.thankyou-page__number {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-gray-70);
+  margin-bottom: 30px;
+}
+
+.thankyou-page__detail {
+  display: table;               /* 收縮成內容寬又能水平置中，且獨占一行（inline-block 會跟按鈕排同行） */
+  margin: 0 auto 30px;
+  text-align: left;
+  padding: 20px 30px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+}
+
+.thankyou-page__row {
+  font-size: 16px;
+  line-height: 28px;
+  color: var(--color-text);
+}
+
+.thankyou-page__label {
+  font-weight: 700;
+  color: var(--color-gray-70);
+  margin-right: 5px;
+}
+
+.thankyou-page__home-link {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 5px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 16px;
+  font-weight: 700;
+}
+.thankyou-page__home-link:hover { filter: brightness(1.1); }

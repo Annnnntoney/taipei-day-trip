@@ -3,8 +3,10 @@
 -- ⚠️ 這是「整個重置」腳本：重跑會清空所有資料（含會員與預定行程），只想加單一張表時，單獨執行該表的 CREATE 區塊即可
 
 -- DROP 集中在最上面，依「子表 → 父表」順序：
--- bookings 的外鍵指向 members 與 attractions，若先砍父表會被外鍵擋下（errno 3730）
+-- bookings/order_payments/orders 的外鍵指向 members 與 attractions，若先砍父表會被外鍵擋下（errno 3730）
 DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS order_payments;
+DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS attraction_images;
 DROP TABLE IF EXISTS members;
 DROP TABLE IF EXISTS attractions;
@@ -58,5 +60,45 @@ CREATE TABLE bookings (
     ON DELETE CASCADE,
   CONSTRAINT fk_booking_attraction
     FOREIGN KEY (attraction_id) REFERENCES attractions(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 訂單（Part 6）
+-- number 是時間戳記＋亂數組成的字串（app.py 的 generate_order_number），不是自動編號，
+-- 因為它要直接回給前端當「訂單編號」顯示，用資料庫的 AUTO_INCREMENT 會暴露總單量
+CREATE TABLE orders (
+  number        VARCHAR(20)   NOT NULL PRIMARY KEY,
+  member_id     INT           NOT NULL,
+  attraction_id INT           NOT NULL,
+  date          DATE          NOT NULL,
+  time          VARCHAR(10)   NOT NULL,              -- "morning" 或 "afternoon"
+  price         INT           NOT NULL,               -- 2000 或 2500
+  contact_name  VARCHAR(100)  NOT NULL,
+  contact_email VARCHAR(255)  NOT NULL,
+  contact_phone VARCHAR(20)   NOT NULL,
+  status        TINYINT       NOT NULL DEFAULT 0,      -- 0 = UNPAID，1 = PAID
+  created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_member (member_id),
+  CONSTRAINT fk_order_member
+    FOREIGN KEY (member_id) REFERENCES members(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_order_attraction
+    FOREIGN KEY (attraction_id) REFERENCES attractions(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 每次呼叫 TapPay Pay By Prime 的結果都存一筆，一張訂單可能對到多筆
+-- （例如失敗後允許使用者重新輸入信用卡再試一次，之後如果要做這個功能，紀錄不會互相覆蓋）
+CREATE TABLE order_payments (
+  id                  INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  order_number        VARCHAR(20)   NOT NULL,
+  tappay_status       INT           NOT NULL,          -- TapPay 回傳的 status，0 為成功
+  tappay_message      VARCHAR(255)  NOT NULL,
+  rec_trade_id        VARCHAR(100)  NULL,
+  bank_transaction_id VARCHAR(100)  NULL,
+  created_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_order (order_number),
+  CONSTRAINT fk_payment_order
+    FOREIGN KEY (order_number) REFERENCES orders(number)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

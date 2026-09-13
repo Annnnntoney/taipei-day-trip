@@ -145,6 +145,10 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 }
 .booking-field__input::placeholder { color: var(--color-text-sub); }   /* Gray 50 #757575 */
 
+/* TapPay 接管的三個欄位：容器本身沿用 .booking-field__input 的框線/尺寸，
+   實際輸入框是 TapPay 注入的 iframe，靠 TPDirect.card.setup() 的 styles 選項調字級/顏色 */
+.tappay-field { padding: 0; }
+
 /* Figma: field notice — Body - Bold 16、Gray 70 */
 .booking-block__notice {
   margin-top: 15px;                     /* 最後欄位底 188 → notice y=203 */
@@ -168,6 +172,14 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   color: var(--color-gray-70);
 }
 
+/* 訂單/付款錯誤訊息（Part 6）：空字串時不佔版面，位置跟 Figma 沒有對應 */
+.booking-confirm__message {
+  margin-top: 10px;
+  font-size: 16px;
+  color: #D0021B;
+}
+.booking-confirm__message:empty { display: none; }
+
 /* Figma: button (forBooking) — padding 10/20、圓角 5、Button - Reg 19(16)、白字 */
 .booking-confirm__btn {
   margin-top: 22px;                     /* Figma: 總價列高 20 → 按鈕 y=42 */
@@ -179,6 +191,7 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   line-height: 16px;
 }
 .booking-confirm__btn:hover { filter: brightness(1.1); }
+.booking-confirm__btn:disabled { opacity: 0.6; cursor: default; }
 
 /* ---------- RWD  Figma: [Mobile] booking (w:360)，容器 340 ---------- */
 @media (max-width: 1280px) {

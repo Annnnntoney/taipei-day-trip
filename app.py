@@ -499,14 +499,8 @@ def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
 
     order = data.order
 
-    # 1. 跟 Part 5 建立預定行程一樣的基本驗證：時段/價格只能是白名單裡的值，
-    #    日期要是合法且非過去的日期
-    if order.trip.time not in ("morning", "afternoon") or order.price not in (2000, 2500):
-        return JSONResponse(
-            status_code=400,
-            content={"error": True, "message": "建立訂單失敗，輸入資料格式不正確"},
-        )
-
+    # 1. 基本格式驗證（快速失敗）。注意：payload 只拿來「比對」，
+    #    訂單真正寫入的內容一律以資料庫裡的預定行程為準（見交易一），防竄改
     try:
         order_date = datetime.date.fromisoformat(order.trip.date)
     except ValueError:
@@ -520,6 +514,8 @@ def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
             content={"error": True, "message": "建立訂單失敗，日期不可為過去的日期"},
         )
 
+    # 聯絡資訊不可為空，且長度不得超過資料表欄位上限——
+    # 超長字串進到 INSERT 會噴資料庫錯誤變 500，該在這裡就用 400 擋下
     contact_name = order.contact.name.strip()
     contact_email = order.contact.email.strip()
     contact_phone = order.contact.phone.strip()
@@ -528,19 +524,53 @@ def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
             status_code=400,
             content={"error": True, "message": "建立訂單失敗，聯絡資訊不可為空"},
         )
+    if len(contact_name) > 100 or len(contact_email) > 255 or len(contact_phone) > 20:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立訂單失敗，聯絡資訊長度超過上限"},
+        )
 
+    # 2. 交易一：核對預定行程 → 原子認領 → 建立 UNPAID 訂單，先 commit 落地。
+    #    交易一結束後不論後面發生什麼事（扣款失敗、程式掛掉），訂單都已存在
     with dict_cursor() as cursor:
         cursor.execute(
-            "SELECT name FROM attractions WHERE id = %s", (order.trip.attraction.id,)
+            "SELECT b.attraction_id, b.date, b.time, b.price, a.name "
+            "FROM bookings b "
+            "JOIN attractions a ON a.id = b.attraction_id "
+            "WHERE b.member_id = %s",
+            (member["id"],),
         )
-        attraction = cursor.fetchone()
-        if attraction is None:
+        booking = cursor.fetchone()
+        if booking is None:
             return JSONResponse(
                 status_code=400,
-                content={"error": True, "message": "建立訂單失敗，景點編號不存在"},
+                content={"error": True, "message": "建立訂單失敗，目前沒有預定行程"},
             )
 
-        # 2. 先建立 UNPAID 訂單。number 是主鍵，理論上可能撞號，撞到就重新產生再試一次
+        # payload 必須跟資料庫裡的預定行程完全一致，
+        # 否則竄改 fetch body 就能用別的價格、別的景點付款
+        if (
+            order.trip.attraction.id != booking["attraction_id"]
+            or order_date != booking["date"]
+            or order.trip.time != booking["time"]
+            or order.price != booking["price"]
+        ):
+            return JSONResponse(
+                status_code=400,
+                content={"error": True, "message": "建立訂單失敗，訂單內容與預定行程不符"},
+            )
+
+        # 原子認領：這條 DELETE 同時是「鎖」——兩個並發請求（另開分頁、連點、重送）
+        # 只有一個刪得到列，另一個 rowcount=0 直接被擋，不會對同一筆預定重複扣款
+        cursor.execute("DELETE FROM bookings WHERE member_id = %s", (member["id"],))
+        if cursor.rowcount == 0:
+            return JSONResponse(
+                status_code=400,
+                content={"error": True, "message": "訂單處理中，請勿重複送出"},
+            )
+
+        # 建立 UNPAID 訂單（值取自剛核對過的預定行程，不是 payload）。
+        # number 是主鍵，理論上可能撞號，撞到就重新產生再試一次
         number = None
         for _ in range(5):
             candidate = generate_order_number()
@@ -553,10 +583,10 @@ def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
                     (
                         candidate,
                         member["id"],
-                        order.trip.attraction.id,
-                        order_date,
-                        order.trip.time,
-                        order.price,
+                        booking["attraction_id"],
+                        booking["date"],
+                        booking["time"],
+                        booking["price"],
                         contact_name,
                         contact_email,
                         contact_phone,
@@ -569,27 +599,47 @@ def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
         if number is None:
             raise RuntimeError("無法產生不重複的訂單編號")
 
-        # 3. 建立訂單後立刻呼叫 TapPay 扣款
-        payment_status, payment_message, rec_trade_id, bank_transaction_id = pay_by_prime(
-            prime=data.prime,
-            amount=order.price,
-            details=f"台北一日遊：{attraction['name']}",
-            contact={"name": contact_name, "email": contact_email, "phone": contact_phone},
-        )
+    # 3. 扣款。刻意放在兩個交易「之間」：外部 HTTP 呼叫不能夾在資料庫交易裡，
+    #    否則整段扣款期間都佔著連線和鎖
+    payment_status, payment_message, rec_trade_id, bank_transaction_id = pay_by_prime(
+        prime=data.prime,
+        amount=booking["price"],
+        details=f"台北一日遊：{booking['name']}",
+        contact={"name": contact_name, "email": contact_email, "phone": contact_phone},
+    )
 
-        # 4. 不論成功失敗都留下一筆付款紀錄；只有成功才把訂單改成 PAID
-        cursor.execute(
-            "INSERT INTO order_payments "
-            "(order_number, tappay_status, tappay_message, rec_trade_id, bank_transaction_id) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (number, payment_status, payment_message, rec_trade_id, bank_transaction_id),
-        )
-        if payment_status == 0:
-            cursor.execute("UPDATE orders SET status = 1 WHERE number = %s", (number,))
-            # 付款成功＝這筆預定行程已完成任務，清掉它——
-            # 否則回到 /booking 還會看到同一筆「待預訂」行程，甚至能重複付款。
-            # 付款失敗時故意不清：訂單留在 UNPAID，預定行程也留著，使用者才有機會重試
-            cursor.execute("DELETE FROM bookings WHERE member_id = %s", (member["id"],))
+    # 4. 交易二：記錄付款結果。成功 → 訂單轉 PAID；
+    #    失敗 → 把剛認領走的預定行程還回去，使用者才有機會重試
+    try:
+        with dict_cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO order_payments "
+                "(order_number, tappay_status, tappay_message, rec_trade_id, bank_transaction_id) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (number, payment_status, payment_message, rec_trade_id, bank_transaction_id),
+            )
+            if payment_status == 0:
+                cursor.execute("UPDATE orders SET status = 1 WHERE number = %s", (number,))
+            else:
+                # INSERT IGNORE：若使用者在扣款期間已另建新預定，保留較新的那筆不覆蓋
+                cursor.execute(
+                    "INSERT IGNORE INTO bookings "
+                    "(member_id, attraction_id, date, time, price) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (
+                        member["id"],
+                        booking["attraction_id"],
+                        booking["date"],
+                        booking["time"],
+                        booking["price"],
+                    ),
+                )
+    except Exception:
+        # 走到這裡代表「錢可能已扣、DB 卻沒記到」：把對帳線索留在 log。
+        # 真實系統要做自動重試/退款/對帳；課程範圍內先保證 UNPAID 訂單已在交易一落地，
+        # 可憑 rec_trade_id 到 TapPay 後台人工對帳
+        print(f"[PAYMENT-RECONCILE] order={number} tappay_status={payment_status} rec_trade_id={rec_trade_id}")
+        raise
 
     # 5. 規格：無論付款成功或失敗，都回傳訂單編號，讓前端導去感謝頁
     return {

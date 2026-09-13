@@ -5,9 +5,11 @@ from pydantic import BaseModel
 import contextlib
 import datetime
 import os
+import random
 import bcrypt
 import jwt
 import mysql.connector
+import requests
 from dotenv import load_dotenv
 
 
@@ -400,3 +402,247 @@ def delete_booking(member: dict = Depends(get_current_member)):
         cursor.execute("DELETE FROM bookings WHERE member_id = %s", (member["id"],))
 
     return {"ok": True}
+
+
+# ---------------------------------------------------
+# Order APIs (Part 6) — 建立訂單並用 TapPay 完成信用卡付款
+# ---------------------------------------------------
+TAPPAY_PARTNER_KEY = os.getenv("TAPPAY_PARTNER_KEY")
+TAPPAY_MERCHANT_ID = os.getenv("TAPPAY_MERCHANT_ID")
+TAPPAY_PAY_BY_PRIME_URL = "https://sandbox.tappaysdk.com/tpc/payment/pay-by-prime"
+
+
+class OrderAttractionInput(BaseModel):
+    id: int
+
+
+class OrderTripInput(BaseModel):
+    attraction: OrderAttractionInput
+    date: str
+    time: str
+
+
+class OrderContactInput(BaseModel):
+    name: str
+    email: str
+    phone: str
+
+
+class OrderDetailInput(BaseModel):
+    price: int
+    trip: OrderTripInput
+    contact: OrderContactInput
+
+
+class OrderInput(BaseModel):
+    prime: str
+    order: OrderDetailInput
+
+
+def generate_order_number():
+    """時間戳記＋3 位亂數。直接讓人看得出下單時間，亂數只是降低撞號機率
+    （真的撞號時 INSERT 會噴 IntegrityError，呼叫端要重試）。"""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    return timestamp + str(random.randint(100, 999))
+
+
+def format_phone_for_tappay(phone):
+    """TapPay 的 cardholder.phone_number 要求 E.164 格式（+886 開頭），
+    使用者填的是台灣本地格式（0 開頭），這裡把開頭的 0 換成國碼。"""
+    phone = phone.strip()
+    return f"+886{phone[1:]}" if phone.startswith("0") else phone
+
+
+def pay_by_prime(prime, amount, details, contact):
+    """呼叫 TapPay Pay By Prime API，回傳 (status, message, rec_trade_id, bank_transaction_id)。
+    連不上 TapPay（網路問題、API 回應不是 JSON）時視為付款失敗，不讓整支 Order API 噴 500——
+    訂單本身仍要成功建立成 UNPAID，讓使用者之後有機會重新付款。"""
+    try:
+        response = requests.post(
+            TAPPAY_PAY_BY_PRIME_URL,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": TAPPAY_PARTNER_KEY,
+            },
+            json={
+                "prime": prime,
+                "partner_key": TAPPAY_PARTNER_KEY,
+                "merchant_id": TAPPAY_MERCHANT_ID,
+                "amount": amount,
+                "currency": "TWD",
+                "details": details,
+                "cardholder": {
+                    "phone_number": format_phone_for_tappay(contact["phone"]),
+                    "name": contact["name"],
+                    "email": contact["email"],
+                },
+                "remember": False,
+            },
+            timeout=10,
+        )
+        result = response.json()
+        return (
+            result.get("status", -1),
+            result.get("msg", "付款失敗，請稍後再試"),
+            result.get("rec_trade_id"),
+            result.get("bank_transaction_id"),
+        )
+    except (requests.RequestException, ValueError):
+        return (-1, "連線金流服務失敗，請稍後再試", None, None)
+
+
+@app.post("/api/orders")
+def create_order(data: OrderInput, member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    order = data.order
+
+    # 1. 跟 Part 5 建立預定行程一樣的基本驗證：時段/價格只能是白名單裡的值，
+    #    日期要是合法且非過去的日期
+    if order.trip.time not in ("morning", "afternoon") or order.price not in (2000, 2500):
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立訂單失敗，輸入資料格式不正確"},
+        )
+
+    try:
+        order_date = datetime.date.fromisoformat(order.trip.date)
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立訂單失敗，日期格式不正確"},
+        )
+    if order_date < datetime.date.today():
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立訂單失敗，日期不可為過去的日期"},
+        )
+
+    contact_name = order.contact.name.strip()
+    contact_email = order.contact.email.strip()
+    contact_phone = order.contact.phone.strip()
+    if not contact_name or not contact_email or not contact_phone:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": "建立訂單失敗，聯絡資訊不可為空"},
+        )
+
+    with dict_cursor() as cursor:
+        cursor.execute(
+            "SELECT name FROM attractions WHERE id = %s", (order.trip.attraction.id,)
+        )
+        attraction = cursor.fetchone()
+        if attraction is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": True, "message": "建立訂單失敗，景點編號不存在"},
+            )
+
+        # 2. 先建立 UNPAID 訂單。number 是主鍵，理論上可能撞號，撞到就重新產生再試一次
+        number = None
+        for _ in range(5):
+            candidate = generate_order_number()
+            try:
+                cursor.execute(
+                    "INSERT INTO orders "
+                    "(number, member_id, attraction_id, date, time, price, "
+                    " contact_name, contact_email, contact_phone, status) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 0)",
+                    (
+                        candidate,
+                        member["id"],
+                        order.trip.attraction.id,
+                        order_date,
+                        order.trip.time,
+                        order.price,
+                        contact_name,
+                        contact_email,
+                        contact_phone,
+                    ),
+                )
+                number = candidate
+                break
+            except mysql.connector.IntegrityError:
+                continue
+        if number is None:
+            raise RuntimeError("無法產生不重複的訂單編號")
+
+        # 3. 建立訂單後立刻呼叫 TapPay 扣款
+        payment_status, payment_message, rec_trade_id, bank_transaction_id = pay_by_prime(
+            prime=data.prime,
+            amount=order.price,
+            details=f"台北一日遊：{attraction['name']}",
+            contact={"name": contact_name, "email": contact_email, "phone": contact_phone},
+        )
+
+        # 4. 不論成功失敗都留下一筆付款紀錄；只有成功才把訂單改成 PAID
+        cursor.execute(
+            "INSERT INTO order_payments "
+            "(order_number, tappay_status, tappay_message, rec_trade_id, bank_transaction_id) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (number, payment_status, payment_message, rec_trade_id, bank_transaction_id),
+        )
+        if payment_status == 0:
+            cursor.execute("UPDATE orders SET status = 1 WHERE number = %s", (number,))
+            # 付款成功＝這筆預定行程已完成任務，清掉它——
+            # 否則回到 /booking 還會看到同一筆「待預訂」行程，甚至能重複付款。
+            # 付款失敗時故意不清：訂單留在 UNPAID，預定行程也留著，使用者才有機會重試
+            cursor.execute("DELETE FROM bookings WHERE member_id = %s", (member["id"],))
+
+    # 5. 規格：無論付款成功或失敗，都回傳訂單編號，讓前端導去感謝頁
+    return {
+        "data": {
+            "number": number,
+            "payment": {"status": payment_status, "message": payment_message},
+        }
+    }
+
+
+@app.get("/api/order/{order_number}")
+def get_order(order_number: str, member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    with dict_cursor() as cursor:
+        # 只查自己名下的訂單：查得到別人的訂單編號也不該洩漏內容
+        cursor.execute(
+            "SELECT o.number, o.price, o.date, o.time, o.status, "
+            "       o.contact_name, o.contact_email, o.contact_phone, "
+            "       a.id AS attraction_id, a.name, a.address, "
+            "       (SELECT url FROM attraction_images "
+            "        WHERE attraction_id = a.id ORDER BY id LIMIT 1) AS image "
+            "FROM orders o "
+            "JOIN attractions a ON a.id = o.attraction_id "
+            "WHERE o.number = %s AND o.member_id = %s",
+            (order_number, member["id"]),
+        )
+        order = cursor.fetchone()
+
+    if order is None:
+        return {"data": None}
+
+    return {
+        "data": {
+            "number": order["number"],
+            "price": order["price"],
+            "trip": {
+                "attraction": {
+                    "id": order["attraction_id"],
+                    "name": order["name"],
+                    "address": order["address"],
+                    "image": order["image"],
+                },
+                "date": order["date"].isoformat(),
+                "time": order["time"],
+            },
+            "contact": {
+                "name": order["contact_name"],
+                "email": order["contact_email"],
+                "phone": order["contact_phone"],
+            },
+            "status": order["status"],
+        }
+    }

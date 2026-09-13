@@ -73,20 +73,23 @@
 
         <hr class="booking-separator">
 
-        <!-- 信用卡付款資訊（Figma: payment 3:217）：版面呈現，金流串接是之後課程的進度 -->
+        <!-- 信用卡付款資訊（Figma: payment 3:217）
+             Part 6：卡號/過期時間/CVV 改由 TapPay SDK 接管——
+             這三個 div 是 TapPay 用來注入安全 iframe 的容器，不是一般 input，
+             瀏覽器端拿不到卡片明碼，直接透過 TPDirect.card.getPrime() 換成 prime -->
         <section class="booking-block">
           <h2 class="booking-block__title">信用卡付款資訊</h2>
           <div class="booking-field">
             <label class="booking-field__label" for="card-number">卡片號碼：</label>
-            <input class="booking-field__input" type="text" id="card-number" placeholder="**** **** **** ****">
+            <div class="booking-field__input tappay-field" id="card-number"></div>
           </div>
           <div class="booking-field">
             <label class="booking-field__label" for="card-expiry">過期時間：</label>
-            <input class="booking-field__input" type="text" id="card-expiry" placeholder="MM / YY">
+            <div class="booking-field__input tappay-field" id="card-expiry"></div>
           </div>
           <div class="booking-field">
             <label class="booking-field__label" for="card-cvv">驗證密碼：</label>
-            <input class="booking-field__input" type="text" id="card-cvv" placeholder="CVV">
+            <div class="booking-field__input tappay-field" id="card-cvv"></div>
           </div>
         </section>
 
@@ -95,7 +98,8 @@
         <!-- 總價＋確認按鈕（Figma: confirm 3:212） -->
         <section class="booking-block booking-confirm">
           <p class="booking-confirm__total">總價：<span id="total-price"></span></p>
-          <button type="button" class="booking-confirm__btn">確認訂購並付款</button>
+          <p class="booking-confirm__message" id="order-message"></p>
+          <button type="button" class="booking-confirm__btn" id="confirm-btn">確認訂購並付款</button>
         </section>
 
       </div>
@@ -111,6 +115,8 @@
     COPYRIGHT © 2021 台北一日遊
   </footer>
 
+  <!-- TapPay Direct Pay SDK：信用卡輸入與取得 prime 都靠它，前端拿不到卡片明碼 -->
+  <script src="https://js.tappaysdk.com/sdk/tpdirect/v5.19.0"></script>
   <script src="/static/auth.js"></script>
   <script src="/static/booking.js"></script>
 </body>

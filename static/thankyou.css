@@ -32,12 +32,12 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
 }
 
 .thankyou-page__detail {
-  display: inline-block;
+  display: table;               /* 收縮成內容寬又能水平置中，且獨占一行（inline-block 會跟按鈕排同行） */
+  margin: 0 auto 30px;
   text-align: left;
   padding: 20px 30px;
   border: 1px solid var(--color-line);
   border-radius: 5px;
-  margin-bottom: 30px;
 }
 
 .thankyou-page__row {

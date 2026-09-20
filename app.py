@@ -892,7 +892,13 @@ async def mcp_endpoint(request: Request, authorization: str = Header(None)):
         if tool_name == "search_attractions":
             # 規格：工具執行出錯回 {"error": true}，不是讓整個請求 500
             try:
-                payload = mcp_search_attractions(str(args.get("keyword", "")).strip())
+                keyword = str(args.get("keyword", "")).strip()
+                # 🔴 空字串沒擋掉的話，SQL 的 LIKE '%%' 會比對到每一筆，
+                # 等於把整個景點目錄倒出去，不是規格要的「錯誤」
+                if not keyword:
+                    payload = {"error": True}
+                else:
+                    payload = mcp_search_attractions(keyword)
             except Exception:
                 payload = {"error": True}
             result = mcp_tool_text(payload)

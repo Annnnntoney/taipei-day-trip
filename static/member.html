@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>會員中心 - 台北一日遊</title>
+  <!-- 內嵌 SVG 圖示：避免瀏覽器自動請求 /favicon.ico 而得到 404 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23448899'/%3E%3Ctext x='16' y='23' font-size='20' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3E台%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/member.css">
+</head>
+<body>
+  <!-- ============ 導覽列 ============ -->
+  <header class="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="/">台北一日遊</a>
+      <nav class="nav__menu">
+        <a class="nav__link" href="/booking" id="booking-link">預定行程</a>
+        <!-- 文字與行為由 auth.js 控制：未登入顯示「登入/註冊」開彈窗，已登入變「會員中心」 -->
+        <a class="nav__link" href="#" id="auth-link">登入/註冊</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ============ 會員中心（Part 7-1，版面依 Guide 截圖） ============ -->
+  <main class="member-page">
+    <div class="member-page__inner">
+
+      <h1 class="member-page__headline">您好，<span id="member-name"></span>：</h1>
+
+      <hr class="member-separator">
+
+      <section class="member-block">
+        <h2 class="member-block__title">AI 工具整合</h2>
+        <p class="member-block__label">MCP 伺服器設定：</p>
+
+        <ul class="member-mcp">
+          <li class="member-mcp__item">
+            <p class="member-mcp__key">Host URL</p>
+            <p class="member-mcp__value" id="host-url"></p>
+          </li>
+          <li class="member-mcp__item">
+            <p class="member-mcp__key">Bearer Token</p>
+            <p class="member-mcp__value" id="token-value">尚未產生，請點下方按鈕產生金鑰</p>
+          </li>
+        </ul>
+
+        <button type="button" class="member-btn" id="generate-btn">產生 / 更新金鑰</button>
+      </section>
+
+      <hr class="member-separator">
+
+      <section class="member-block">
+        <button type="button" class="member-btn" id="signout-btn">登出會員</button>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ============ 頁尾 ============ -->
+  <footer class="footer">
+    COPYRIGHT © 2021 台北一日遊
+  </footer>
+
+  <script src="/static/auth.js"></script>
+  <script src="/static/member.js"></script>
+</body>
+</html>

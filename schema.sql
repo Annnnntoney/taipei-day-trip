@@ -3,7 +3,8 @@
 -- ⚠️ 這是「整個重置」腳本：重跑會清空所有資料（含會員與預定行程），只想加單一張表時，單獨執行該表的 CREATE 區塊即可
 
 -- DROP 集中在最上面，依「子表 → 父表」順序：
--- bookings/order_payments/orders 的外鍵指向 members 與 attractions，若先砍父表會被外鍵擋下（errno 3730）
+-- bookings/order_payments/orders/mcp_tokens 的外鍵指向 members 與 attractions，若先砍父表會被外鍵擋下（errno 3730）
+DROP TABLE IF EXISTS mcp_tokens;
 DROP TABLE IF EXISTS bookings;
 DROP TABLE IF EXISTS order_payments;
 DROP TABLE IF EXISTS orders;
@@ -100,5 +101,18 @@ CREATE TABLE order_payments (
   INDEX idx_order (order_number),
   CONSTRAINT fk_payment_order
     FOREIGN KEY (order_number) REFERENCES orders(number)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- MCP 授權金鑰（Part 7）
+-- 每位會員一把長期 API token（member_id 是主鍵＝一人最多一列，重新產生時 ON DUPLICATE KEY UPDATE 覆蓋）；
+-- token 有 UNIQUE，MCP 請求帶 token 進來時可以反查是哪位會員
+CREATE TABLE mcp_tokens (
+  member_id  INT        NOT NULL PRIMARY KEY,
+  token      CHAR(64)   NOT NULL,               -- secrets.token_hex(32) 產生的 64 字元十六進位字串
+  updated_at TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_token (token),
+  CONSTRAINT fk_token_member
+    FOREIGN KEY (member_id) REFERENCES members(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

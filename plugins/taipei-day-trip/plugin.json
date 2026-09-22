@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "taipei-day-trip",
+  "version": "1.0.0",
+  "description": "在 Codex 中直接搜尋台北市景點並預定一日導覽行程",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "台北一日遊",
+        "shortDescription": "搜尋台北景點、預定導覽行程",
+        "category": "Productivity"
+      }
+    }
+  }
+}

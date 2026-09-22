@@ -4,8 +4,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import contextlib
 import datetime
+import json
 import os
 import random
+import secrets
 import bcrypt
 import jwt
 import mysql.connector
@@ -34,6 +36,11 @@ async def booking(request: Request):
 @app.get("/thankyou", include_in_schema=False)
 async def thankyou(request: Request):
 	return FileResponse("./static/thankyou.html", media_type="text/html")
+
+# 會員中心頁（Part 7）——上面的 Static Pages 區塊規定不可修改，新頁面加在區塊外
+@app.get("/member", include_in_schema=False)
+async def member_page(request: Request):
+	return FileResponse("./static/member.html", media_type="text/html")
 
 # ---------------------------------------------------
 # Static assets (CSS / JS / images)
@@ -342,39 +349,24 @@ def get_booking(member: dict = Depends(get_current_member)):
     }
 
 
-@app.post("/api/booking")
-def create_booking(data: BookingInput, member: dict = Depends(get_current_member)):
-    unauthorized = require_member(member)
-    if unauthorized:
-        return unauthorized
+def upsert_booking(member_id, attraction_id, date_str, time, price):
+    """驗證輸入並建立（或覆蓋）預定行程。成功回 None，失敗回錯誤原因字串。
+    網站的 POST /api/booking 和 Part 7 的 MCP add-to-cart tool 共用這一份邏輯。"""
+    if time not in ("morning", "afternoon") or price not in (2000, 2500):
+        return "輸入資料格式不正確"
 
-    if data.time not in ("morning", "afternoon") or data.price not in (2000, 2500):
-        return JSONResponse(
-            status_code=400,
-            content={"error": True, "message": "建立失敗，輸入資料格式不正確"},
-        )
-
-    # 日期不能只信前端：字串要真的是合法日期（否則進 DB 才爆會變 500），也不能是過去
+    # 日期不能只信呼叫端：字串要真的是合法日期（否則進 DB 才爆會變 500），也不能是過去
     try:
-        booking_date = datetime.date.fromisoformat(data.date)
-    except ValueError:
-        return JSONResponse(
-            status_code=400,
-            content={"error": True, "message": "建立失敗，日期格式不正確"},
-        )
+        booking_date = datetime.date.fromisoformat(str(date_str))
+    except (TypeError, ValueError):
+        return "日期格式不正確"
     if booking_date < datetime.date.today():
-        return JSONResponse(
-            status_code=400,
-            content={"error": True, "message": "建立失敗，日期不可為過去的日期"},
-        )
+        return "日期不可為過去的日期"
 
     with dict_cursor() as cursor:
-        cursor.execute("SELECT id FROM attractions WHERE id = %s", (data.attractionId,))
+        cursor.execute("SELECT id FROM attractions WHERE id = %s", (attraction_id,))
         if cursor.fetchone() is None:
-            return JSONResponse(
-                status_code=400,
-                content={"error": True, "message": "建立失敗，景點編號不存在"},
-            )
+            return "景點編號不存在"
 
         # 每位會員同時只能有一筆預定行程（bookings.member_id 有 UNIQUE）：
         # 已存在就直接覆蓋成新的一筆，不用先查再決定 INSERT 還是 UPDATE
@@ -386,7 +378,23 @@ def create_booking(data: BookingInput, member: dict = Depends(get_current_member
             "  date = VALUES(date), "
             "  time = VALUES(time), "
             "  price = VALUES(price)",
-            (member["id"], data.attractionId, booking_date, data.time, data.price),
+            (member_id, attraction_id, booking_date, time, price),
+        )
+
+    return None
+
+
+@app.post("/api/booking")
+def create_booking(data: BookingInput, member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    error = upsert_booking(member["id"], data.attractionId, data.date, data.time, data.price)
+    if error:
+        return JSONResponse(
+            status_code=400,
+            content={"error": True, "message": f"建立失敗，{error}"},
         )
 
     return {"ok": True}
@@ -696,3 +704,236 @@ def get_order(order_number: str, member: dict = Depends(get_current_member)):
             "status": order["status"],
         }
     }
+
+
+# ---------------------------------------------------
+# Member MCP Token APIs (Part 7)
+# 會員頁的「產生 / 更新金鑰」：發一把長期 API token 給 AI 工具（Codex）用。
+# 跟網站登入用的 JWT 是兩套系統——JWT 會過期、內容自帶身分；
+# 這把 token 是不透明字串，靠資料庫反查身分，可隨時重新產生讓舊的作廢
+# ---------------------------------------------------
+@app.get("/api/member/token")
+def get_mcp_token(member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    with dict_cursor() as cursor:
+        cursor.execute("SELECT token FROM mcp_tokens WHERE member_id = %s", (member["id"],))
+        row = cursor.fetchone()
+
+    return {"data": {"token": row["token"]} if row else None}
+
+
+@app.post("/api/member/token")
+def generate_mcp_token(member: dict = Depends(get_current_member)):
+    unauthorized = require_member(member)
+    if unauthorized:
+        return unauthorized
+
+    # secrets 模組是密碼學等級的亂數（random 模組可被預測，不能拿來當金鑰）
+    token = secrets.token_hex(32)
+
+    with dict_cursor() as cursor:
+        # member_id 是主鍵：第一次 INSERT、之後同一人再按就 UPDATE 覆蓋，舊金鑰立即作廢
+        cursor.execute(
+            "INSERT INTO mcp_tokens (member_id, token) VALUES (%s, %s) "
+            "ON DUPLICATE KEY UPDATE token = VALUES(token)",
+            (member["id"], token),
+        )
+
+    return {"data": {"token": token}}
+
+
+# ---------------------------------------------------
+# MCP Server (Part 7) — 讓 AI 工具（Codex）透過 MCP 協定搜尋景點、建立預定
+#
+# MCP 的 Streamable HTTP 傳輸：客戶端把每一則 JSON-RPC 2.0 訊息 POST 到 /mcp/。
+# 這裡走「無狀態」模式（不發 session id、直接回 application/json），
+# 規範允許，實作最單純。要處理的方法只有四種：
+#   initialize（握手）→ notifications/initialized（通知，回 202 即可）
+#   → tools/list（列出工具）→ tools/call（呼叫工具）
+# ---------------------------------------------------
+MCP_TOOLS = [
+    {
+        # 🔴 name 只能用英數/底線：Codex 會把 MCP tool 對應到 OpenAI 的 function calling，
+        # function 名稱不接受中文。規格書要求的中文名稱放在 title 與 description
+        "name": "search_attractions",
+        "title": "搜尋台北市景點",
+        "description": "透過關鍵字和捷運站名搜尋台北市一日旅遊的景點",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "keyword": {
+                    "type": "string",
+                    "description": "景點名稱關鍵字（模糊比對）或捷運站名（完全比對）",
+                },
+            },
+            "required": ["keyword"],
+        },
+    },
+    {
+        "name": "add_to_cart",
+        "title": "預定景點導覽行程",
+        "description": "根據景點編號、日期、時間、價格，預定一個景點導覽行程",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "attractionId": {"type": "integer", "description": "景點編號"},
+                "date": {"type": "string", "description": "導覽日期，格式 YYYY-MM-DD，不可為過去日期"},
+                "time": {
+                    "type": "string",
+                    "enum": ["morning", "afternoon"],
+                    "description": "時段：morning＝上半天、afternoon＝下半天",
+                },
+                "price": {
+                    "type": "integer",
+                    "enum": [2000, 2500],
+                    "description": "費用：上半天 2000、下半天 2500",
+                },
+            },
+            "required": ["attractionId", "date", "time", "price"],
+        },
+    },
+]
+
+
+def get_member_id_by_mcp_token(authorization):
+    """用 Authorization 標頭裡的 MCP token 反查會員 id；查不到（token 無效）回 None。"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[len("Bearer "):].strip()
+    if not token:
+        return None
+
+    with dict_cursor() as cursor:
+        cursor.execute("SELECT member_id FROM mcp_tokens WHERE token = %s", (token,))
+        row = cursor.fetchone()
+
+    return row["member_id"] if row else None
+
+
+def mcp_search_attractions(keyword):
+    """search tool 本體：比照網站搜尋（站名完全比對／景點名模糊比對），不分頁。
+    description 是「簡介」，截前 80 字就夠 AI 判斷，也讓回應不要肥到拖慢對話。"""
+    with dict_cursor() as cursor:
+        cursor.execute(
+            "SELECT id, name, description, category, mrt FROM attractions "
+            "WHERE mrt = %s OR name LIKE %s "
+            "ORDER BY id",
+            (keyword, f"%{keyword}%"),
+        )
+        rows = cursor.fetchall()
+
+    return {
+        "data": [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "description": row["description"][:80],
+                "category": row["category"],
+                "mrt": row["mrt"],
+            }
+            for row in rows
+        ]
+    }
+
+
+def mcp_tool_text(payload):
+    """MCP tools/call 的回傳格式：結果包成一段 text content，內容是規格書要求的 JSON 字串。"""
+    return {
+        "content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}],
+        "isError": False,
+    }
+
+
+def jsonrpc_error(msg_id, code, message):
+    return {"jsonrpc": "2.0", "id": msg_id, "error": {"code": code, "message": message}}
+
+
+@app.post("/mcp/")
+@app.post("/mcp", include_in_schema=False)   # 有沒有結尾斜線都收，設定檔少打一撇不至於整個掛掉
+async def mcp_endpoint(request: Request, authorization: str = Header(None)):
+    try:
+        message = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content=jsonrpc_error(None, -32700, "Parse error"))
+
+    if not isinstance(message, dict):
+        return JSONResponse(status_code=400, content=jsonrpc_error(None, -32600, "Invalid request"))
+
+    # 沒有 id 的訊息是「通知」（例如 notifications/initialized）：
+    # 依 Streamable HTTP 規範回 202 Accepted、不帶內容
+    if "id" not in message:
+        return Response(status_code=202)
+
+    msg_id = message["id"]
+    method = message.get("method")
+    params = message.get("params") or {}
+
+    if method == "initialize":
+        result = {
+            # 客戶端提議它要的協定版本，支援的話照樣回去（我們的功能面各版本都相容）
+            "protocolVersion": params.get("protocolVersion", "2025-06-18"),
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "台北一日遊", "version": "1.0.0"},
+        }
+
+    elif method == "ping":
+        result = {}
+
+    elif method == "tools/list":
+        result = {"tools": MCP_TOOLS}
+
+    elif method == "tools/call":
+        tool_name = params.get("name")
+        args = params.get("arguments") or {}
+
+        if tool_name == "search_attractions":
+            # 規格：工具執行出錯回 {"error": true}，不是讓整個請求 500
+            try:
+                keyword = str(args.get("keyword", "")).strip()
+                # 🔴 空字串沒擋掉的話，SQL 的 LIKE '%%' 會比對到每一筆，
+                # 等於把整個景點目錄倒出去，不是規格要的「錯誤」
+                if not keyword:
+                    payload = {"error": True}
+                else:
+                    payload = mcp_search_attractions(keyword)
+            except Exception:
+                payload = {"error": True}
+            result = mcp_tool_text(payload)
+
+        elif tool_name == "add_to_cart":
+            # 規格：先用 token 反查會員，查不到就是無效 token；
+            # 查到了就跟網站上已登入會員建立預定完全一樣（共用 upsert_booking）
+            try:
+                member_id = get_member_id_by_mcp_token(authorization)
+                if member_id is None:
+                    payload = {"error": True}
+                else:
+                    error = upsert_booking(
+                        member_id,
+                        args.get("attractionId"),
+                        args.get("date"),
+                        args.get("time"),
+                        args.get("price"),
+                    )
+                    if error:
+                        payload = {"error": True}
+                    else:
+                        booking_url = str(request.base_url).rstrip("/") + "/booking"
+                        payload = {
+                            "ok": True,
+                            "message": f"台北導覽行程，預定成功，請到 {booking_url} 完成付款。",
+                        }
+            except Exception:
+                payload = {"error": True}
+            result = mcp_tool_text(payload)
+
+        else:
+            return jsonrpc_error(msg_id, -32602, f"Unknown tool: {tool_name}")
+
+    else:
+        return jsonrpc_error(msg_id, -32601, f"Method not found: {method}")
+
+    return {"jsonrpc": "2.0", "id": msg_id, "result": result}

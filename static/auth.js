@@ -71,7 +71,8 @@ let isSignedIn = false;   // 由 checkSigninStatus() 決定，authLink 點擊行
    ============================================================ */
 
 /**
- * 問後端「我是誰」，依回答決定右上角顯示「登入/註冊」還是「登出系統」。
+ * 問後端「我是誰」，依回答決定右上角顯示「登入/註冊」還是「會員中心」。
+ * （Part 7-1：已登入改顯示「會員中心」取代「登出系統」，登出功能搬進會員頁）
  * 規格：GET /api/user/auth，token 放 Authorization: Bearer 標頭；
  * 沒登入時後端回 {"data": null}，是正常回應不是錯誤。
  */
@@ -87,7 +88,8 @@ async function checkSigninStatus() {
 
     if (result.data) {
       isSignedIn = true;
-      authLink.textContent = "登出系統";
+      authLink.textContent = "會員中心";
+      authLink.href = "/member";
     } else {
       // token 過期或無效：清掉，免得每頁都白問一次
       localStorage.removeItem(TOKEN_KEY);
@@ -124,13 +126,13 @@ function clearMessages() {
   signupMessage.textContent = "";
 }
 
-/* Part 4-6：右上角連結——已登入按下去是登出，未登入按下去開彈窗 */
+/* Part 7-1：右上角連結——已登入是「會員中心」導去 /member，未登入開彈窗
+   （Part 4 時代這裡是登出，Part 7 起登出改由會員頁的「登出會員」按鈕負責） */
 authLink.addEventListener("click", async (event) => {
-  event.preventDefault();   // <a href="#"> 預設會把網址加上 # 並捲到頁首，擋掉
+  event.preventDefault();   // 先擋預設，等登入狀態確認完再決定去向
   await authReady;          // 等登入狀態確認完，避免把已登入者誤判成未登入
   if (isSignedIn) {
-    localStorage.removeItem(TOKEN_KEY);  // 登出＝丟掉 token，後端不用知道
-    location.reload();                   // 重新整理，讓狀態檢查重跑
+    location.href = "/member";
   } else {
     openDialog();
   }
@@ -254,4 +256,5 @@ window.Auth = {
   openDialog,
   getToken: () => localStorage.getItem(TOKEN_KEY),
   ready: () => authReady,   // 等這個 promise 完成後，isSignedIn() 才是可信的
+  signOut: () => localStorage.removeItem(TOKEN_KEY),   // Part 7：會員頁的「登出會員」用
 };

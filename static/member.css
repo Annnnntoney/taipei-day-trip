@@ -1,0 +1,88 @@
+/* ============================================================
+   Taipei Day Trip — 會員中心頁樣式（Part 7-1）
+   版面依 Guide Part 7 截圖，字級/顏色/間距沿用 booking 頁同一套
+   設計 token（19 粗標題、16 內文、Gray 70、分隔線 Gray 300）
+   style.css 必須先載入（共用變數在那）
+   ============================================================ */
+
+/* 內容不多，讓 main 撐開、footer 貼底 */
+body { min-height: 100vh; display: flex; flex-direction: column; }
+.member-page { flex: 1 0 auto; }
+
+.member-page__inner {
+  width: 100%;
+  max-width: var(--container);          /* 1200 */
+  margin: 0 auto;
+  padding: 40px 0;
+}
+
+/* 標題與內容對齊 980 內容欄（跟 booking 頁一致） */
+.member-page__headline,
+.member-block {
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.member-page__headline {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 27px;
+  color: var(--color-gray-70);
+}
+
+.member-separator {
+  border: none;
+  border-top: 1px solid var(--color-line);
+  margin: 40px 0;
+}
+
+.member-block__title {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--color-gray-70);
+  margin-bottom: 15px;
+}
+
+.member-block__label {
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--color-gray-70);
+  margin-bottom: 10px;
+}
+
+/* Host URL / Bearer Token 條列 */
+.member-mcp { margin: 0 0 25px 20px; list-style: disc; }
+.member-mcp__item { color: var(--color-gray-70); margin-bottom: 12px; }
+
+.member-mcp__key {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+/* token 是 64 字元連續字串，手機上要能斷行、不能撐爆版面 */
+.member-mcp__value {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--color-text-sub);
+  word-break: break-all;
+}
+
+/* 青色按鈕：跟「確認訂購並付款」同一款（Figma button forBooking 規格） */
+.member-btn {
+  display: block;
+  padding: 10px 20px;
+  border-radius: 5px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 19px;
+  line-height: 16px;
+}
+.member-btn:hover { filter: brightness(1.1); }
+
+/* ---------- RWD ---------- */
+@media (max-width: 1280px) {
+  .member-page__inner { padding-left: 10px; padding-right: 10px; }
+}

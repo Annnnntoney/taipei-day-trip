@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "taipei-day-trip": {
+      "type": "streamable-http",
+      "url": "http://43.213.133.188:8000/mcp/",
+      "http_headers": {
+        "Authorization": "Bearer 請換成會員中心頁面產生的金鑰"
+      }
+    }
+  }
+}
